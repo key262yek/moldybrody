@@ -40,155 +40,92 @@ impl ContinuousTopology{
     }
 }
 
-impl<'a> Topology<'a, Cartessian1D<f64>, OpenBall1D<'a>> for ContinuousTopology{
-    /// Return a openball of center pos.
+impl Topology<Cartessian1D<f64>> for ContinuousTopology{
+    /// Check whether the movement is valid or not
     ///
-    /// Cartessian1D 구조체로 주어지는 point를 중심으로 하는 OpenBall1D를 반환한다.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use moldybrody::system::point::Cartessian1D;
-    /// # use moldybrody::system::neighbor::OpenBall1D;
-    /// # use moldybrody::system::topology::ContinuousTopology;
-    /// # use moldybrody::system::Topology;
-    /// let sys = ContinuousTopology::new(0.1);
-    /// let v = Cartessian1D{coord : 0.0};
-    /// assert_eq!(sys.neighbor(&v), OpenBall1D::new(&v));
-    /// ```
-    fn neighbor<'b : 'a>(&self, pos : &'b Cartessian1D<f64>) -> OpenBall1D<'b>{
-        OpenBall1D{
-            center : &pos,
-        }
-    }
-
-    /// Check whether the point is in a neighbor or not.
-    ///
-    /// OpenBall로 주어진 neighbor에 point가 속해있는지 여부를 확인해주는 함수이다.
-    /// 시스템에는 OpenBall의 반지름이 max_step으로 정해져있는데,
-    /// 이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 계산하기 위해서다.
+    /// point의 이동이 가능한 move인지 아닌지 여부를 확인해주는 함수이다.
+    /// 시스템은 max_step이 정해져있는데,
+    /// 이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 제한한다.
     ///
     /// # Examples
     ///
     /// ```
     /// # use moldybrody::system::point::Cartessian1D;
-    /// # use moldybrody::system::neighbor::OpenBall1D;
     /// # use moldybrody::system::topology::ContinuousTopology;
     /// # use moldybrody::system::Topology;
     /// let sys = ContinuousTopology::new(0.1);
-    /// let vt = Cartessian1D{coord : 0.05};
+    /// let vt = Cartessian1D{coord : 0.0};
     ///
-    /// let v1 = Cartessian1D{coord : 0.0};
-    /// let n1 = OpenBall1D::new(&v1);
-    /// assert_eq!(sys.inclusion(&vt, &n1), true);
+    /// let move1 = Cartessian1D{coord : 0.05};
+    /// assert_eq!(sys.check_move(&vt, &move1), true);
     ///
-    /// let v2 = Cartessian1D{coord : 1.0};
-    /// let n2 = OpenBall1D::new(&v2);
-    /// assert_eq!(sys.inclusion(&vt, &n2), false);
+    /// let move2 = Cartessian1D{coord : 0.11};
+    /// assert_eq!(sys.check_move(&vt, &move2), false);
     /// ```
     ///
     /// # Panic
     ///
-    /// point와 neighbor가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
+    /// point와 movement가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
     /// ```should_panic
     /// # use moldybrody::system::point::{Cartessian1D, Cartessian2D, CartessianND};
-    /// # use moldybrody::system::neighbor::{OpenBall2D, OpenBallND};
     /// # use moldybrody::system::topology::ContinuousTopology;
     /// # use moldybrody::system::Topology;
     /// let sys = ContinuousTopology::new(0.1);
-    /// let v1 = Cartessian1D{coord : 0.0};
+    /// let p = Cartessian2D{coord : [1.0; 2]};
+    /// let move = CartessianND{coord : vec![0.0; 2]};
+    /// // sys.check_move(&p, &move);    // Cannot compile
     ///
-    /// let v2 = Cartessian2D{coord : [0.0; 2]};
-    /// let n2 = OpenBall2D::new(&v2);
-    /// // sys.inclusion(&v1, &n2);    // Cannot compile
-    ///
-    /// let v3 = CartessianND{coord : vec![0.0; 2]};
-    /// let n3 = OpenBallND::new(&v3);
-    /// // sys.inclusion(&v2, &n3);    // Cannot compile
-    ///
-    /// let v4 = CartessianND{coord : vec![0.0; 3]};
-    /// let n4 = OpenBallND::new(&v4);
-    /// sys.inclusion(&v3, &n4);       // Panic!
+    /// let p2 = CartessianND{coord : vec![0.0; 2]};
+    /// let move2 = CartessianND{coord : vec![0.0; 3]};
+    /// sys.check_move(&p2, &move2);       // Panic!
     /// ```
-    fn inclusion(&self, pos : &Cartessian1D<f64>, neigh : &OpenBall1D) -> bool{
-        let r = pos.distance(neigh.center);
+    fn check_move(&self, _pos : &Cartessian1D<f64>, movement : &Cartessian1D<f64>) -> bool{
+        let r = movement.norm();
         r < self.max_step
     }
 }
 
-impl<'a> Topology<'a, CartessianND<f64>, OpenBallND<'a>> for ContinuousTopology{
-    /// Return a openball of center pos.
+impl Topology<CartessianND<f64>> for ContinuousTopology{
+    /// Check whether the movement is valid or not
     ///
-    /// CartessianND 구조체로 주어지는 point를 중심으로 하는 OpenBall1D를 반환한다.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use moldybrody::system::point::CartessianND;
-    /// # use moldybrody::system::neighbor::OpenBallND;
-    /// # use moldybrody::system::topology::ContinuousTopology;
-    /// # use moldybrody::system::Topology;
-    /// let sys = ContinuousTopology::new(0.1);
-    /// let v = CartessianND{coord : vec![0.0; 3]};
-    /// assert_eq!(sys.neighbor(&v), OpenBallND::new(&v));
-    /// ```
-    fn neighbor<'b : 'a>(&self, pos : &'b CartessianND<f64>) -> OpenBallND<'b>{
-        OpenBallND{
-            center : &pos,
-        }
-    }
-
-    /// Check whether the point is in a neighbor or not.
-    ///
-    /// OpenBall로 주어진 neighbor에 point가 속해있는지 여부를 확인해주는 함수이다.
-    /// 시스템에는 OpenBall의 반지름이 max_step으로 정해져있는데,
-    /// 이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 계산하기 위해서다.
+    /// point의 이동이 가능한 move인지 아닌지 여부를 확인해주는 함수이다.
+    /// 시스템은 max_step이 정해져있는데,
+    /// 이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 제한한다.
     ///
     /// # Examples
     ///
     /// ```
     /// # use moldybrody::system::point::CartessianND;
-    /// # use moldybrody::system::neighbor::OpenBallND;
     /// # use moldybrody::system::topology::ContinuousTopology;
     /// # use moldybrody::system::Topology;
     /// let sys = ContinuousTopology::new(0.1);
-    /// let mut vt = CartessianND{coord : vec![0.0; 3]};
-    /// vt.coord[0] = 0.05;
+    /// let vt = CartessianND{coord : vec![2.0; 2]};
     ///
-    /// let v1 = CartessianND{coord : vec![0.0; 3]};
-    /// let n1 = OpenBallND::new(&v1);
-    /// assert_eq!(sys.inclusion(&vt, &n1), true);
+    /// let mut move1 = CartessianND{coord : vec![0.0, 0.05]};   // length of movement is smaller than 0.1
+    /// assert_eq!(sys.check_move(&vt, &move1), true);
     ///
-    /// let v2 = CartessianND{coord : vec![1.0; 3]};
-    /// let n2 = OpenBallND::new(&v2);
-    /// assert_eq!(sys.inclusion(&vt, &n2), false);
+    /// let move2 = CartessianND{coord : vec![0.1, 0.05]};       // length of movement is larger than 0.1
+    /// assert_eq!(sys.check_move(&vt, &move2), false);
     /// ```
     ///
     /// # Panic
     ///
-    /// point와 neighbor가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
+    /// point와 movement가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
     /// ```should_panic
     /// # use moldybrody::system::point::{Cartessian1D, Cartessian2D, CartessianND};
-    /// # use moldybrody::system::neighbor::{OpenBall2D, OpenBallND};
     /// # use moldybrody::system::topology::ContinuousTopology;
     /// # use moldybrody::system::Topology;
     /// let sys = ContinuousTopology::new(0.1);
-    /// let v1 = Cartessian1D{coord : 0.0};
+    /// let p = Cartessian2D{coord : [1.0; 2]};
+    /// let move = CartessianND{coord : vec![0.0; 2]};
+    /// // sys.check_move(&p, &move);    // Cannot compile
     ///
-    /// let v2 = Cartessian2D{coord : [0.0; 2]};
-    /// let n2 = OpenBall2D::new(&v2);
-    /// // sys.inclusion(&v1, &n2);    // Cannot compile
-    ///
-    /// let v3 = CartessianND{coord : vec![0.0; 2]};
-    /// let n3 = OpenBallND::new(&v3);
-    /// // sys.inclusion(&v2, &n3);    // Cannot compile
-    ///
-    /// let v4 = CartessianND{coord : vec![0.0; 3]};
-    /// let n4 = OpenBallND::new(&v4);
-    /// sys.inclusion(&v3, &n4);       // Panic!
+    /// let p2 = CartessianND{coord : vec![0.0; 2]};
+    /// let move2 = CartessianND{coord : vec![0.0; 3]};
+    /// sys.check_move(&p2, &move2);       // Panic!
     /// ```
-    fn inclusion(&self, pos : &CartessianND<f64>, neigh : &OpenBallND) -> bool{
-        let r = pos.distance(neigh.center);
+    fn check_move(&self, _pos : &CartessianND<f64>, movement : &CartessianND<f64>) -> bool{
+        let r = movement.norm();
         r < self.max_step
     }
 }
@@ -196,86 +133,53 @@ impl<'a> Topology<'a, CartessianND<f64>, OpenBallND<'a>> for ContinuousTopology{
 
 #[allow(unused_macros)]
 macro_rules! impl_continuous_topology_nD{
-    ($cartessian_name:ident, $neighbor_name:ident, $dim:expr) =>{
-        impl<'a> Topology<'a, $cartessian_name<f64>, $neighbor_name<'a>> for ContinuousTopology{
+    ($cartessian_name:ident, $dim:expr) =>{
+        impl Topology<$cartessian_name<f64>> for ContinuousTopology{
+
             doc_comment!{
                 concat!(
-                    "Return a openball of center pos.
+                    "Check whether the movement is valid or not
 
-", stringify!($cartessian_name), " 구조체로 주어지는 point를 중심으로 하는 ", stringify!($neighbor_name), " 을 반환한다.
+point의 이동이 가능한 move인지 아닌지 여부를 확인해주는 함수이다.
+시스템은 max_step이 정해져있는데,
+이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 제한한다.
 
 # Examples
 
 ```
 # use moldybrody::system::point::", stringify!($cartessian_name), ";
-# use moldybrody::system::neighbor::", stringify!($neighbor_name), ";
-# use moldybrody::system::topology::ContinuousTopology;
-# use moldybrody::system::Topology;let sys = ContinuousTopology::new(0.1);
-let v = ", stringify!($cartessian_name), "{coord : [0.0; ", $dim, "]};
-assert_eq!(sys.neighbor(&v), ", stringify!($neighbor_name), "::new(&v));
-```"
-                ),
-                fn neighbor<'b : 'a>(&self, pos : &'b $cartessian_name<f64>) -> $neighbor_name<'b>{
-                    $neighbor_name{
-                        center : &pos,
-                    }
-                }
-            }
-
-            doc_comment!{
-                concat!(
-                    "Check whether the point is in a neighbor or not.
-
-OpenBall로 주어진 neighbor에 point가 속해있는지 여부를 확인해주는 함수이다.
-시스템에는 OpenBall의 반지름이 max_step으로 정해져있는데,
-이는 시뮬레이션 과정에서 입자가 움직일 수 있는 최대 변위를 계산하기 위해서다.
-
-# Examples
-
-```
-# use moldybrody::system::point::", stringify!($cartessian_name), ";
-# use moldybrody::system::neighbor::", stringify!($neighbor_name), ";
 # use moldybrody::system::topology::ContinuousTopology;
 # use moldybrody::system::Topology;
 let sys = ContinuousTopology::new(0.1);
-let mut vt = ", stringify!($cartessian_name), "{coord : [0.0; ", $dim, "]};
-vt.coord[0] = 0.05;
+let vt = ", stringify!($cartessian_name), "{coord : [2.0; ", $dim, "]};
+let mut move1 = ", stringify!($cartessian_name), "{coord : [0.0; 2]};
 
-let v1 = ", stringify!($cartessian_name), "{coord : [0.0; ", $dim, "]};
-let n1 = ", stringify!($neighbor_name), "::new(&v1);
-assert_eq!(sys.inclusion(&vt, &n1), true);
+move1.coord[0] = 0.05;   // length of movement is smaller than 0.1
+assert_eq!(sys.check_move(&vt, &move1), true);
 
-let v2 = ", stringify!($cartessian_name), "{coord : [1.0; ", $dim, "]};
-let n2 = ", stringify!($neighbor_name), "::new(&v2);
-assert_eq!(sys.inclusion(&vt, &n2), false);
+move1.coord[1] = 0.1;       // length of movement is larger than 0.1
+assert_eq!(sys.check_move(&vt, &move1), false);
 ```
 
 # Panic
 
-point와 neighbor가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
+point와 movement가 서로 차원이 다르면 compile error가 생기거나 panic이 일어납니다.
 ```should_panic
 # use moldybrody::system::point::{Cartessian1D, Cartessian2D, CartessianND};
-# use moldybrody::system::neighbor::{OpenBall2D, OpenBallND};
 # use moldybrody::system::topology::ContinuousTopology;
 # use moldybrody::system::Topology;
 let sys = ContinuousTopology::new(0.1);
-let v1 = Cartessian1D{coord : 0.0};
+let p = Cartessian2D{coord : [1.0; 2]};
+let move = CartessianND{coord : vec![0.0; 2]};
+// sys.check_move(&p, &move);    // Cannot compile
 
-let v2 = Cartessian2D{coord : [0.0; 2]};
-let n2 = OpenBall2D::new(&v2);
-// sys.inclusion(&v1, &n2);    // Cannot compile
-
-let v3 = CartessianND{coord : vec![0.0; 2]};
-let n3 = OpenBallND::new(&v3);
-// sys.inclusion(&v2, &n3);    // Cannot compile
-
-let v4 = CartessianND{coord : vec![0.0; 3]};
-let n4 = OpenBallND::new(&v4);
-sys.inclusion(&v3, &n4);       // Panic!
+let p2 = CartessianND{coord : vec![0.0; 2]};
+let move2 = CartessianND{coord : vec![0.0; 3]};
+sys.check_move(&p2, &move2);       // Panic!
 ```"
                 ),
-                fn inclusion(&self, pos : &$cartessian_name<f64>, neigh : &$neighbor_name) -> bool{
-                    let r = pos.distance(neigh.center);
+                fn check_move(&self, _pos : &$cartessian_name<f64>, movement : &$cartessian_name<f64>) -> bool{
+                    let r = movement.norm();
                     r < self.max_step
                 }
             }
@@ -283,7 +187,7 @@ sys.inclusion(&v3, &n4);       // Panic!
     }
 }
 
-impl_continuous_topology_nD!(Cartessian2D, OpenBall2D, 2);
-impl_continuous_topology_nD!(Cartessian3D, OpenBall3D, 3);
-impl_continuous_topology_nD!(Cartessian4D, OpenBall4D, 4);
+impl_continuous_topology_nD!(Cartessian2D, 2);
+impl_continuous_topology_nD!(Cartessian3D, 3);
+impl_continuous_topology_nD!(Cartessian4D, 4);
 
