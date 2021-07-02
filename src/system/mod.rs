@@ -12,74 +12,38 @@
 ///
 /// Topology를 구성하는 요소 중 점에 해당하는 trait.
 /// 각 점에 대응되는 이웃을 알 수 있어야합니다.
-pub trait Point{
-
-}
-
-/// Neighbor of a point
-///
-/// Topology를 구성하는 요소 중 이웃에 해당하는 trait.
-/// 특정 점이 이웃에 속하는지 여부를 확인할 수 있어야 합니다.
-pub trait Neighbor<'a>{
-
-}
+pub trait Point{}
 
 
 /// Topology on the system
 ///
 /// Point와 Neighbor trait을 구성요소로 하여 시스템의 Topology를 정의해주는 trait입니다.
 /// 점과 이웃의 관계는 비로소 Topology 안에서 정의됩니다.
-pub trait Topology<'a, P, N>
-    where P : Point,
-          N : Neighbor<'a>{
-    /// Return a neighbor of the point
+pub trait Topology<P>
+    where P : Point{
+    /// Check whether a movement is valid or not.
     ///
-    /// 점의 이웃을 알려주는 함수입니다.
-    /// 시뮬레이션에서 이웃의 보다 실천적 의미는 한 번에 갈 수 있는 점들의 집합을 의미합니다.
-    /// 
-    /// # Examples 
-    /// 
-    /// ```
-    /// use moldybrody::system::point::Cartessian3D;
-    /// use moldybrody::system::neighbor::OpenBall3D;
-    /// use moldybrody::system::topology::ContinuousTopology;
-    /// use moldybrody::system::Topology;
-    ///
-    /// let sys = ContinuousTopology::new(0.1);
-    /// let v = Cartessian3D{coord : [0.0; 3]};
-    /// assert_eq!(sys.neighbor(&v), OpenBall3D::new(&v));
-    /// ```
-    fn neighbor<'b : 'a>(&self, pos : &'b P) -> N;
-
-    /// Check whether a point is in the neighbor or not
-    ///
-    /// point가 neighbor에 속하는지 여부를 확인하는 함수입니다.
-    /// particle이 특정 위치로 이동할 수 있는지 여부를 test할 때 쓰입니다.
+    /// movement나 목적지가 주어졌을 때, 해당 movement가 가능한 move인지 아닌지에 대해 확인하는 함수입니다.
     /// 
     /// # Examples 
     /// 
     /// ```
     /// use moldybrody::system::point::Cartessian2D;
-    /// use moldybrody::system::neighbor::OpenBall2D;
     /// use moldybrody::system::topology::ContinuousTopology;
     /// use moldybrody::system::Topology;
     ///
     /// let sys = ContinuousTopology::new(0.1);
-    /// let vt = Cartessian2D{coord : [0.0, 0.05]};
+    /// let vt = Cartessian2D{coord : [0.0; 2]};
     ///
-    /// let v1 = Cartessian2D{coord : [0.0, 0.0]};
-    /// let n1 = OpenBall2D::new(&v1);
-    /// assert_eq!(sys.inclusion(&vt, &n1), true);
+    /// let move1 = Cartessian2D{coord : [0.05, 0.0]};
+    /// assert_eq!(sys.inclusion(&vt, &move1), true);
     ///
-    /// let v2 = Cartessian2D{coord : [0.0, 1.0]};
-    /// let n2 = OpenBall2D::new(&v2);
-    /// assert_eq!(sys.inclusion(&vt, &n2), false);
+    /// let move2 = Cartessian2D{coord : [0.0, 1.1]};
+    /// assert_eq!(sys.inclusion(&vt, &move2), false);
     /// ```
-    fn inclusion(&self, pos : &P, neigh : &N) -> bool;
+    fn check_move(&self, pos : &P, movement : &P) -> bool;
 }
 
-
 pub mod point;
-pub mod neighbor;
 pub mod topology;
 

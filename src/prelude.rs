@@ -1,14 +1,13 @@
 
 #[allow(unused_imports)]
 pub use crate::{
-    system::{Point, Neighbor, Topology},
+    system::{Point, Topology},
 };
 
 #[allow(unused_imports)]
 pub(crate) use crate::{
     system::{
         point::{Cartessian1D, Cartessian2D, Cartessian3D, Cartessian4D, CartessianND},
-        neighbor::{OpenBall1D, OpenBall2D, OpenBall3D, OpenBall4D, OpenBallND},
         topology::{ContinuousTopology},
     },
     error::{Result, Error, ErrorCode},
