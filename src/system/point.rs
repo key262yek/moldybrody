@@ -46,6 +46,25 @@ impl Cartessian1D<f64>{
     pub fn distance(&self, other : &Self) -> f64{
         (self.coord - other.coord).abs()
     }
+
+    /// return a norm of vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::point::Cartessian1D;
+    /// let v1 = Cartessian1D{coord : 0.0};
+    /// assert_eq!(v1.norm(), 0.0);
+    ///
+    /// let v2 = Cartessian1D{coord : 3.0};
+    /// assert_eq!(v2.norm(), 3.0);
+    ///
+    /// let v3 = Cartessian1D{coord : -3.0};
+    /// assert_eq!(v3.norm(), 3.0);
+    /// ```
+    pub fn norm(&self) -> f64{
+        return self.coord.abs();
+    }
 }
 
 impl Point for Cartessian1D<i32>{}
@@ -79,6 +98,25 @@ impl Cartessian1D<i32>{
     /// ```
     pub fn taxi_distance(&self, other : &Self) -> usize{
         (self.coord - other.coord).abs() as usize
+    }
+
+    /// return a taxi norm of vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::point::Cartessian1D;
+    /// let v1 = Cartessian1D{coord : 0};
+    /// assert_eq!(v1.taxi_norm(), 0);
+    ///
+    /// let v2 = Cartessian1D{coord : 3};
+    /// assert_eq!(v2.taxi_norm(), 3);
+    ///
+    /// let v3 = Cartessian1D{coord : -3};
+    /// assert_eq!(v2.taxi_norm(), 3);
+    /// ```
+    pub fn taxi_norm(&self) -> usize{
+        return self.coord.abs() as usize;
     }
 }
 
@@ -148,6 +186,28 @@ impl CartessianND<f64>{
 
         return r.sqrt();
     }
+
+    /// return a norm of vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::point::CartessianND;
+    /// let v1 = CartessianND{coord : vec![0.0; 2]};
+    /// assert_eq!(v1.norm(), 0.0);
+    ///
+    /// let v2 = CartessianND{coord : vec![3.0, 4.0]};
+    /// assert_eq!(v2.norm(), 5.0);
+    /// ```
+    pub fn norm(&self) -> f64{
+        let mut r = 0f64;
+
+        for x in &self.coord{
+            r += x * x;
+        }
+
+        return r.sqrt();
+    }
 }
 
 impl Point for CartessianND<i32>{}
@@ -200,6 +260,29 @@ impl CartessianND<i32>{
             r += dx.abs() as usize;
         }
         return r;
+    }
+
+    /// return a taxi norm of vector
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::point::CartessianND;
+    /// let v1 = CartessianND{coord : vec![0; 2]};
+    /// assert_eq!(v1.taxi_norm(), 0);
+    ///
+    /// let v2 = CartessianND{coord : vec![3, 4]};
+    /// assert_eq!(v2.taxi_norm(), 7);
+    ///
+    /// let v3 = CartessianND{coord : vec![3, -4]};
+    /// assert_eq!(v3.taxi_norm(), 7);
+    /// ```
+    pub fn taxi_norm(&self) -> usize{
+        let mut r = 0;
+        for x in &self.coord{
+            r += x.abs()
+        }
+        return r as usize;
     }
 }
 
@@ -269,6 +352,33 @@ assert_eq!(v1.distance(&v2), 1.0);
                     return r.sqrt();
                 }
             }
+
+            doc_comment!{
+                concat!(
+                    "return a norm of vector
+
+# Examples
+
+```
+# use moldybrody::system::point::", stringify!($type_name), ";
+let mut v1 = ", stringify!($type_name), "{coord : [0.0; ", $dim, "]};
+assert_eq!(v1.norm(), 0.0);
+
+v1.coord[0] = 3.0;
+assert_eq!(v1.norm(), 3.0);
+
+v1.coord[1] = -4.0;
+assert_eq!(v1.norm(), 5.0);
+```"),
+                pub fn norm(&self) -> f64{
+                    let mut r = 0f64;
+                    for x in &self.coord{
+                        r += x * x;
+                    }
+
+                    return r.sqrt();
+                }
+            }
         }
 
         impl Point for $type_name<i32>{}
@@ -314,6 +424,33 @@ assert_eq!(v1.taxi_distance(&v2), 1);
                         r += dx.abs() as usize;
                     }
                     return r;
+                }
+            }
+
+            doc_comment!{
+                concat!(
+                    "return a taxi norm of vector
+
+# Examples
+
+```
+# use moldybrody::system::point::", stringify!($type_name), ";
+let mut v1 = ", stringify!($type_name), "{coord : [0; ", $dim, "]};
+assert_eq!(v1.taxi_norm(), 0);
+
+v1.coord[0] = 3;
+assert_eq!(v1.taxi_norm(), 3);
+
+v1.coord[1] = -4;
+assert_eq!(v1.taxi_norm(), 7);
+```"
+                ),
+                pub fn taxi_norm(&self) -> usize{
+                    let mut r = 0;
+                    for x in &self.coord{
+                        r += x.abs()
+                    }
+                    return r as usize;
                 }
             }
         }
