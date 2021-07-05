@@ -460,3 +460,21 @@ assert_eq!(v1.taxi_norm(), 7);
 impl_cartessian_nD!(Cartessian2D, 2);
 impl_cartessian_nD!(Cartessian3D, 3);
 impl_cartessian_nD!(Cartessian4D, 4);
+
+
+// ===========================================================================================
+// ===========================================================================================
+// ===========================================================================================
+
+
+/// node of a network
+///
+/// Network에서 node는 index만 부여된 상태로 이해하면 됩니다.
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
+pub struct NodeIndex{
+    /// Index of node
+    pub index : usize,
+}
+
+impl Point for NodeIndex{}
+

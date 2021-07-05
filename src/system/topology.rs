@@ -384,3 +384,105 @@ impl_lattice_topology_nD!(Cartessian2D, 2);
 impl_lattice_topology_nD!(Cartessian3D, 3);
 impl_lattice_topology_nD!(Cartessian4D, 4);
 
+// ===========================================================================================
+// ===========================================================================================
+// ===========================================================================================
+
+/// Network topology
+///
+/// Network의 topology는 node의 개수와 각 node들의 연결정보로 주어집니다.
+/// 이때 연결정보는 연결 여부만 담는 경우가 있고,
+/// edge에 weight가 부여된 경우가 있습니다.
+/// 이를 포괄하기 위해 LatticeTopology의 adjoint matrix를 구성하는 type이 bool, i32, f64로 달라질 수 있도록 개발했습니다.
+/// directed network의 경우에는 adjoint matrix가 symmetric하지 않을 수 있습니다.
+/// 하지만 모든 경우에 adjoint matrix는 square matrix여야합니다. 그렇지 않으면 처음 정의에서부터 panic합니다. 
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct NetworkTopology<T>{
+    /// The number of nodes
+    num_node : usize,
+    /// Adjoint matrix,
+    adjoint : Vec<Vec<T>>,
+}
+
+impl<T : Clone> NetworkTopology<T>{
+    /// Initialization of Network toopology.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::topology::NetworkTopology;
+    /// let adj_bool : Vec<Vec<bool>> = vec![vec![true, false], vec![true, true]];
+    /// let net_bool = NetworkTopology::new(&adj_bool);
+    ///
+    /// let adj_int = vec![vec![1, 0], vec![1, 1]];
+    /// let net_int = NetworkTopology::new(&adj_int);
+    ///
+    /// let adj_float = vec![vec![1.0, 0.0], vec![0.2, 0.5]];
+    /// let net_float = NetworkTopology::new(&adj_float);
+    /// ```
+    ///
+    /// # Panic
+    /// Square matrix가 아닌 matrix가 들어오면 panic합니다. 
+    /// ```should_panic
+    /// # use moldybrody::system::topology::NetworkTopology;
+    /// let adj_bool : Vec<Vec<bool>> = vec![vec![true, false], 
+    ///                                      vec![true, true], 
+    ///                                      vec![true, false]];
+    /// let net_bool = NetworkTopology::new(&adj_bool);
+    /// ```
+    pub fn new(adjoint : &Vec<Vec<T>>) -> Self{
+        // test square matrix
+        let n = adjoint.len();
+        for row in adjoint{
+            if row.len() != n{
+                panic!("{}", ErrorCode::InvalidArgumentInput);
+            }
+        }
+        Self{
+            num_node : adjoint.len(),
+            adjoint : adjoint.clone(),
+        }
+    }
+}
+
+impl<T : Copy + Default + PartialEq> Topology<NodeIndex> for NetworkTopology<T>{
+    /// Check whether the movement is valid or not
+    ///
+    /// point의 이동이 가능한 move인지 아닌지 여부를 확인해주는 함수이다.
+    /// network에서는 목적지 node가 연결되어있는지 여부를 확인하는 방법으로 movement의 적합성을 확인합니다.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use moldybrody::system::point::NodeIndex;
+    /// # use moldybrody::system::topology::NetworkTopology;
+    /// # use moldybrody::system::Topology;
+    /// let adj_bool : Vec<Vec<bool>> = vec![vec![true, false], vec![true, true]];
+    /// let sys = NetworkTopology::new(&adj_bool);
+    /// let v1 = NodeIndex{index : 0};
+    /// let v2 = NodeIndex{index : 1};
+    ///
+    /// assert_eq!(sys.check_move(&v1, &v2), false);
+    /// assert_eq!(sys.check_move(&v2, &v1), true);
+    /// ```
+    ///
+    /// # Panic
+    ///
+    /// 출발점이나 도착점의 index가 시스템의 number of node를 넘어가면 panic합니다.
+    /// ```should_panic
+    /// # use moldybrody::system::point::NodeIndex;
+    /// # use moldybrody::system::topology::NetworkTopology;
+    /// # use moldybrody::system::Topology;
+    /// let adj_bool : Vec<Vec<bool>> = vec![vec![true, false], vec![true, true]];
+    /// let sys = NetworkTopology::new(&adj_bool);
+    ///
+    /// let v1 = NodeIndex{index : 0};
+    /// let v2 = NodeIndex{index : 3};
+    /// sys.check_move(&v1, &v2);           // Panic!
+    /// sys.check_move(&v2, &v1);           // Panic!
+    /// ```
+    fn check_move(&self, depart : &NodeIndex, arrival : &NodeIndex) -> bool{
+        let connect = self.adjoint[depart.index][arrival.index];
+        !(connect == T::default())
+    }
+}
