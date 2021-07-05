@@ -7,8 +7,9 @@ pub use crate::{
 #[allow(unused_imports)]
 pub(crate) use crate::{
     system::{
-        point::{Cartessian1D, Cartessian2D, Cartessian3D, Cartessian4D, CartessianND},
-        topology::{ContinuousTopology},
+        point::{Cartessian1D, Cartessian2D, Cartessian3D, Cartessian4D, CartessianND,
+                NodeIndex},
+        topology::{ContinuousTopology, LatticeTopology, NetworkTopology},
     },
     error::{Result, Error, ErrorCode},
 };
