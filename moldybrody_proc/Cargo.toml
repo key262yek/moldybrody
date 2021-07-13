@@ -1,0 +1,26 @@
+[package]
+name = "moldybrody_proc"
+version = "0.1.0"
+authors = ["Myeongseon Choi <joyms514@kaist.ac.kr>"]
+edition = "2018"
+readme="README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/key262yek/moldybrody"
+documentation = "https://docs.rs/moldybrody_proc"
+description = """
+    Rust package for Molecular dynamics and Brownian dynamics
+"""
+keywords = ["Molecular-Dynamics", "MD", "Brownian-Dynamics", "BD"]
+categories = ["simulation"]
+include = ["src/", "Cargo.toml", "Readme.md", "LICENSE-*", "COPYRIGHT"]
+
+[lib]
+proc-macro=true
+
+[dependencies]
+proc-macro2="1.0"
+proc-quote="0.4"
+syn={version = "1.0", features=["derive"]}
+
+[dev-dependencies]
+moldybrody={path = "../../moldybrody"}
