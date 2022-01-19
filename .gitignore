@@ -1,4 +1,9 @@
+*/target
 /target
+/tests
+/benches
+/examples
+*/tests
 Cargo.lock
 .DS_Store
 *.c

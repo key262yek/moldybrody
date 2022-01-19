@@ -44,6 +44,7 @@ impl Error{
             ErrorCode::Message(_) => Category::Data,
             ErrorCode::Io(_) => Category::Io,
             ErrorCode::InvalidDimension
+            | ErrorCode::InvalidType
             | ErrorCode::InvalidNumberOfArguments
             | ErrorCode::InvalidArgumentInput
             | ErrorCode::TooLargeTimeStep
@@ -99,6 +100,10 @@ pub enum ErrorCode{
     #[allow(dead_code)]
     InvalidDimension,
 
+    /// Given type of argument is not valid
+    #[allow(dead_code)]
+    InvalidType,
+
     /// Number of Arguments are different
     #[allow(dead_code)]
     InvalidNumberOfArguments,
@@ -126,6 +131,7 @@ impl Display for ErrorCode{
             ErrorCode::Message(ref msg) => f.write_str(msg),
             ErrorCode::Io(ref err) => Display::fmt(err, f),
             ErrorCode::InvalidDimension => f.write_str("Invalid Dimension of vectors"),
+            ErrorCode::InvalidType => f.write_str("Invalid type of argument"),
             ErrorCode::InvalidNumberOfArguments => f.write_str("Number of Arguments is invalid"),
             ErrorCode::InvalidArgumentInput => f.write_str("Given argument is invalid"),
             ErrorCode::TooLargeTimeStep => f.write_str("Time step is too large"),

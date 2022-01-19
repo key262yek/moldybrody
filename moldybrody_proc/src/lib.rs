@@ -4,20 +4,6 @@ use proc_quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, DeriveInput, Data, Fields, Index};
 
-/// Derive macros autocomplete the trait Point.
-///
-/// MoldyBrody에서는 Point trait이 존재하는데, 이를 자동으로 구성해주는 매크로이다.
-#[proc_macro_derive(Point)]
-pub fn derive_point(item: TokenStream) -> TokenStream {
-    let x = syn::parse_macro_input!(item as DeriveInput);
-    let name = x.ident;
-
-    let tokens = proc_quote::quote!{
-        impl Point for #name {}
-    };
-    tokens.into()
-}
-
 
 /// Derive macros autocomplete the trait Topology.
 ///
@@ -56,6 +42,45 @@ pub fn derive_topology(item: TokenStream) -> TokenStream {
         Data::Union(_) => unimplemented!(),
     };
     // panic!("{}", tokens.to_string());
+    tokens.into()
+}
+
+/// Declarative macro to generate derive macro
+#[allow(unused_macros)]
+macro_rules! simple_trait{
+    ($trait_name:ident, $func_name:ident) => {
+        #[proc_macro_derive($trait_name)]
+        pub fn $func_name(item : TokenStream) -> TokenStream{
+            let x = parse_macro_input!(item as DeriveInput);
+
+            let struct_name = x.ident;
+            let (impl_generics, ty_generics, where_clause) = x.generics.split_for_impl();
+            let tokens = quote!{
+                impl #impl_generics $trait_name for #struct_name #ty_generics #where_clause {}
+            };
+            tokens.into()
+        }
+    }
+}
+
+simple_trait!(Point, derive_point);
+simple_trait!(Force, derive_force);
+simple_trait!(Displacement, derive_disp);
+simple_trait!(State, derive_state);
+
+#[proc_macro_derive(Mass)]
+pub fn derive_mass(item : TokenStream) -> TokenStream{
+    let x = parse_macro_input!(item as DeriveInput);
+
+    let struct_name = x.ident;
+    let (impl_generics, ty_generics, where_clause) = x.generics.split_for_impl();
+    let tokens = quote!{
+        impl #impl_generics Mass for #struct_name #ty_generics #where_clause {
+            fn mass(&self) -> f64{
+                self.mass
+            }
+        }
+    };
     tokens.into()
 }
 

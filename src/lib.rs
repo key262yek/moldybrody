@@ -12,15 +12,53 @@
 //!   let x = 10;
 //! ```
 
-#[macro_use]
 extern crate doc_comment;
+extern crate num_traits;
+extern crate ndarray;
 
-pub mod system;
+pub mod vector;
+pub mod state;
+// pub mod system;
 pub mod boundary;
-pub mod force;
-pub mod approx;
-pub mod analysis;
+// pub mod force;
+// pub mod approx;
+// pub mod analysis;
+pub mod rng;
+
 
 pub(crate) mod error;
 pub mod prelude;
+
+//
+// Todo
+//
+// Common
+    // Argument information auto-complete
+    // Argument parsing
+//
+// System
+    // Continuous : Rectangular, Circular
+    // Point & Boundary로 정의됨.
+    // Boundary condition check
+        // Periodic
+        // Reflective
+        // Robin
+        // etc
+// Point
+    // Associated with System
+    // Vector operation : Add, Scalar Multiplication, Sub, Dot, cross
+// Boundary
+    // 경계면은 대부분 함수로 정의됨.
+// Agent
+    // Single-ptl : Global Interaction, Brownian, Active motion, Levy walk
+    // Double-ptl : Central forces
+    // Move
+// Approximation
+    // First order approximation : Newtonian / Stochastic
+    // Second .. : Newtonian / Stochastic
+    // Forces to Displacement
+// Analysis
+
+
+
 

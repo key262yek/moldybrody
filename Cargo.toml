@@ -14,10 +14,28 @@ keywords = ["Molecular-Dynamics", "MD", "Brownian-Dynamics", "BD"]
 categories = ["simulation"]
 include = ["src/", "Cargo.toml", "Readme.md", "LICENSE-*", "COPYRIGHT"]
 
-
 [dependencies]
 rand = "0.8.4"
 rand_pcg = "0.3.1"
 rand_distr = "0.4.1"
 doc-comment = "0.3.3"
+moldybrody_proc = {path = "moldybrody_proc"}
+itertools = "0.10.3"
+assert_approx_eq = "1.1.0"
+ndarray = "0.15.2"
+num-traits = "0.2.0"
+num-complex = "0.4.0"
+approx = {version = "0.5.0", features = ["num-complex"]}
+ndarray-linalg = {version = "0.14.1", features = ["openblas-system"]}
+# blas-src = {version = "0.8", features = ["openblas"] }
+# openblas-src = {version = "0.10.4", features = ["cblas", "system"]}
+
+
+[dev-dependencies]
+criterion = "0.3.4"
+
+
+[[bench]]
+name = "boundary_simple_plane"
+harness = false
 
