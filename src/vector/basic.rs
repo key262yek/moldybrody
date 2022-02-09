@@ -1,5 +1,7 @@
 
-use std::fmt::Debug;
+
+// use std::convert::TryInto;
+// use std::fmt::Debug;
 use crate::vector::{Cartessian, CartessianND};
 
 use std::{
@@ -49,13 +51,17 @@ impl<T, const N : usize> Cartessian<T, N>{
     ///     a.map(|x| *x as i32) == Cartessian::<i32, 2>::new([2, 0])
     /// )
     /// ```
-    pub fn map<'a, B, F>(&'a self, mut f : F) -> Cartessian<B, N>
-        where F : FnMut(&'a T) -> B,
-              T : Clone,
-              B : Debug{
+    // pub fn map<'a, B, F>(&'a self, mut f : F) -> Cartessian<B, N>
+    //     where F : FnMut(&'a T) -> B,
+    //           T : Clone,
+    //           B : Debug{
 
-        Cartessian::<B, N>::from_iter_unchecked(self.into_iter().map(|x| f(x)))
-    }
+    //     // Cartessian::<B, N>{
+    //     //     coord : self.into_iter().map(|x| f(x)).collect::<Vec<B>>().try_into().unwrap(),
+    //     // }
+
+    //     Cartessian::<B, N>::from_iter_unchecked(self.into_iter().map(|x| f(x)))
+    // }
 
     /// Modify the array in place by calling f by mutable reference on each element.
     pub fn map_inplace<'a, F>(&'a mut self, f : F)
@@ -99,11 +105,10 @@ impl<T, const N : usize> BorrowMut<[T]> for Cartessian<T, N>{
 }
 
 impl<T, const N : usize> Default for Cartessian<T, N>
-    where T : Default,
-         [T; N] : Default{
+    where T : Default + Copy{
     fn default() -> Self{
         Self{
-            coord : <[T; N] as Default>::default()
+            coord : [T::default(); N],
         }
     }
 }
@@ -205,12 +210,12 @@ impl<T> CartessianND<T>{
     ///     a.map(|x| *x as i32) == CartessianND::<i32>::new(vec![2, 0])
     /// )
     /// ```
-    pub fn map<'a, B, F>(&'a self, mut f : F) -> CartessianND<B>
-        where F : FnMut(&'a T) -> B,
-              B : Debug + Clone{
+    // pub fn map<'a, B, F>(&'a self, mut f : F) -> CartessianND<B>
+    //     where F : FnMut(&'a T) -> B,
+    //           B : Debug + Clone{
 
-        CartessianND::<B>::from_iter(self.into_iter().map(|x| f(x)))
-    }
+    //     CartessianND::<B>::from_iter(self.into_iter().map(|x| f(x)))
+    // }
 
     /// Modify the array in place by calling f by mutable reference on each element.
     pub fn map_inplace<'a, F>(&'a mut self, f : F)
@@ -321,7 +326,7 @@ mod test {
         *a.get_mut(0).unwrap() = 2.0;
         assert_eq!(a.get(0), Some(&2.0));
 
-        assert_eq!(a.map(|x| x * x), Cartessian2D::new([4.0, 9.0]));
+        // assert_eq!(a.map(|x| x * x), Cartessian2D::new([4.0, 9.0]));
 
         a.map_inplace(|x| *x = *x * *x);
         assert_eq!(a, Cartessian2D::new([4.0, 9.0]));
@@ -357,7 +362,7 @@ mod test {
         *c.get_mut(0).unwrap() = 2.0;
         assert_eq!(c.get(0), Some(&2.0));
 
-        assert_eq!(c.map(|x| x * x), CartessianND::new(vec![4.0, 9.0]));
+        // assert_eq!(c.map(|x| x * x), CartessianND::new(vec![4.0, 9.0]));
 
         c.map_inplace(|x| *x = *x * *x);
         assert_eq!(c, CartessianND::new(vec![4.0, 9.0]));
