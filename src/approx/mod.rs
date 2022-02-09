@@ -3,25 +3,21 @@
 //! Molecular dynamics도, Stochastic dynamics도 모두 여러 approximation method가 존재합니다.
 //! 각 dynamics에서, general case냐 overdamped case냐에 따라, 그리고 order에 따라 달라지는 approximation method를 정리하였습니다.
 
-use crate::prelude::*;
+// use crate::prelude::*;
 
-/// Indicate a struct as state of particle
-///
-/// 어떤 strcut는 각 함수들에서 particle의 state 역할을 할 것입니다.
-/// state struct란 것을 지칭하기 위한 trait입니다.
-pub trait State {}
+use crate::error::Error;
+use crate::state::State;
+use crate::vector::Vector;
 
 /// Approximation method
 ///
 /// System에 따라 정해지는 State와 Force, Time Iterator를 인자로 해서 State를 renewal하는 approximation method를 지칭합니다.
 /// 같은 시스템에서도 approximation order에 따라 그 형태가 달라질 수 있습니다.
-pub trait Approximation<S, P, T>
-    where Self : Sized,
-          S : State,
-          P : Point{
+pub trait ApproxNewton<'a> : State{
     /// Renew state by using approximation
-    fn renew(&self, state : &mut S, force : &P, dt : T);
+    fn approx(&'a self, force : &'a <Self as State>::Position, dt : <<Self as State>::Position as Vector>::Item) -> <Self as State>::Movement;
 }
+
 
 /// Trait for iterate time of system
 ///
@@ -75,7 +71,7 @@ pub trait TimeIterator<T>
     /// const_step.set_tmax(10f64);
     /// assert_eq!(const_step.tmax, 10f64);
     /// ```
-    fn set_tmax(&mut self, tmax : T) -> Result<()>;
+    fn set_tmax(&mut self, tmax : T) -> Result<(), Error>;
 
     /// Return iterator of both a current time and time step simultaneously
     ///
@@ -140,7 +136,7 @@ impl<T : Iterator + TimeIterator<f64>> Iterator for TimeDiffIterator<T>{
     }
 }
 
-pub mod state;
+
 pub mod time;
-pub mod molecular_dynamics;
-pub mod brownian_dynamics;
+pub mod newton;
+// pub mod brownian_dynamics;

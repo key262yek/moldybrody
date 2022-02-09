@@ -5,7 +5,10 @@
 //! - Exponential Step : 시스템 초반에는 짧은 time step으로 시뮬레이션하고, 그 이후부터는 constant step으로 시뮬레이션 할 때 사용할 수 있습니다.
 //! - Nearest Time : Run and Tumble 방식으로 움직이는 입자들의 경우, Run 과정에서는 굳이 짧은 시간 단위로 끊지 않아도 오차 없이 입자들의 운동을 기술할 수 있습니다. 따라서 우리는 각 입자의 Tumble time을 ordered list에 보관하고 가장 근접한 시점으로 바로 이동하는 방식을 채택할 수 있습니다.
 
-use crate::prelude::*;
+// use crate::prelude::*;
+use crate::approx::TimeIterator;
+use crate::approx::TimeDiffIterator;
+use crate::error::{Error, ErrorCode};
 
 /// Constant step time iterator
 ///
@@ -51,7 +54,7 @@ impl ConstStep{
     /// assert_approx_eq!(const_step.tmax, std::f64::MAX);
     /// ```
     #[allow(dead_code)]
-    pub fn new(dt : f64) -> Result<Self>{
+    pub fn new(dt : f64) -> Result<Self, Error>{
         if dt < 1e-15{
             return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
         }
@@ -109,7 +112,7 @@ impl TimeIterator<f64> for ConstStep{
     /// max_t += 1e-3;
     /// assert_approx_eq!(max_t, 1f64);
     /// ```
-    fn set_tmax(&mut self, tmax : f64) -> Result<()>{
+    fn set_tmax(&mut self, tmax : f64) -> Result<(), Error>{
         if tmax < 0f64{
             return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
         }
@@ -189,7 +192,7 @@ pub struct ExponentialStep{
 
 impl ExponentialStep{
     #[allow(dead_code)]
-    pub fn new(dt_min : f64, dt_max : f64, length : usize) -> Result<Self>{
+    pub fn new(dt_min : f64, dt_max : f64, length : usize) -> Result<Self, Error>{
         if dt_min < 1e-10 || dt_min > dt_max || length == 0{
             return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
         }
@@ -218,7 +221,7 @@ impl ExponentialStep{
     }
 
     #[allow(dead_code)]
-    pub fn set_inc(&mut self, inc : f64) -> Result<()>{
+    pub fn set_inc(&mut self, inc : f64) -> Result<(), Error>{
         if inc <= 1f64{
             return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
         }
@@ -237,7 +240,7 @@ impl TimeIterator<f64> for ExponentialStep{
         self.dt
     }
 
-    fn set_tmax(&mut self, tmax : f64) -> Result<()>{
+    fn set_tmax(&mut self, tmax : f64) -> Result<(), Error>{
         if tmax < 0f64{
             return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
         }
