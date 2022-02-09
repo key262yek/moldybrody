@@ -10,8 +10,8 @@ use approx::AbsDiffEq;
 use super::{Cartessian, CartessianND};
 
 pub trait Integer : 'static + Copy + Eq + PartialEq + PartialOrd + Ord + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> {}
-pub trait Scalar : 'static + Debug + Copy + PartialEq + Sum + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self>{}
-pub trait Float : NDScalar + AddAssign + SubAssign + MulAssign + DivAssign + Display + Debug + Scalar + Send + Sync + AbsDiffEq{}
+pub trait Scalar : 'static + Debug + Copy + PartialEq + Sum + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + AddAssign + SubAssign + DivAssign + MulAssign{}
+pub trait Float : NDScalar + Display + Debug + Scalar + Send + Sync + AbsDiffEq{}
 
 macro_rules! impl_integer {
     ($name : ident $(, $names : ident)*) => {
@@ -49,138 +49,129 @@ impl_float!(f32, f64, Complex32, Complex64);
 
 
 
-fn clone_iopf<A: Clone, B: Clone>(f: impl Fn(A, B) -> A) -> impl FnMut(&mut A, &B) {
-    move |x, y| *x = f(x.clone(), y.clone())
+fn clone_iopf<A: Copy, B: Copy>(f: impl Fn(A, B) -> A) -> impl FnMut(&mut A, &B) {
+    move |x, y| *x = f(*x, *y)
 }
 
-fn clone_iopf_rev<A: Clone, B: Clone>(f: impl Fn(A, B) -> B) -> impl FnMut(&mut B, &A) {
-    move |x, y| *x = f(y.clone(), x.clone())
+fn clone_iopf_rev<A: Copy, B: Copy>(f: impl Fn(A, B) -> B) -> impl FnMut(&mut B, &A) {
+    move |x, y| *x = f(*y, *x)
 }
 
 macro_rules! impl_binary_op{
     ($trt : ident, $operator : tt, $mth : ident, $iop : tt, $doc : expr) => {
         impl<T, const N : usize> $trt<Cartessian<T, N>> for Cartessian<T, N>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = Cartessian<T, N>;
 
-            fn $mth(self, rhs : Self) -> Self{
-                let mut out = self.clone();
-                out.zip_mut_with(&rhs, clone_iopf(T::$mth));
-
-                out
+            fn $mth(mut self, rhs : Self) -> Self{
+                self.zip_mut_with(&rhs, clone_iopf(T::$mth));
+                self
             }
         }
 
         impl<'a, T, const N : usize> $trt<&'a Cartessian<T, N>> for Cartessian<T, N>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = Cartessian<T, N>;
 
-            fn $mth(self, rhs : &Self) -> Self{
-                let mut out = self.clone();
-                out.zip_mut_with(rhs, clone_iopf(T::$mth));
-
-                out
+            fn $mth(mut self, rhs : &Self) -> Self{
+                self.zip_mut_with(rhs, clone_iopf(T::$mth));
+                self
             }
         }
 
         impl<'a, T, const N : usize> $trt<Cartessian<T, N>> for &'a Cartessian<T, N>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = Cartessian<T, N>;
 
-            fn $mth(self, rhs : Cartessian<T, N>) -> Cartessian<T, N>{
-                let mut out = rhs.clone();
-                out.zip_mut_with(self, clone_iopf_rev(T::$mth));
-
-                out
+            fn $mth(self, mut rhs : Cartessian<T, N>) -> Cartessian<T, N>{
+                rhs.zip_mut_with(self, clone_iopf_rev(T::$mth));
+                rhs
             }
         }
 
         impl<'a, T, const N : usize> $trt<&'a Cartessian<T, N>> for &'a Cartessian<T, N>
-        where T : $trt<Output = T> + Clone + Debug{
+        where T : $trt<Output = T> + Copy + Clone + Debug{
             type Output = Cartessian<T, N>;
 
             fn $mth(self, rhs : &Cartessian<T, N>) -> Cartessian<T, N>{
-                Cartessian::<T, N>::from_iter(
-                    self.into_iter().zip(rhs)
-                        .map(|(x, y)| x.clone() $operator y.clone())
-                ).unwrap()
+                let mut out = self.clone();
+                out.zip_mut_with(rhs, |x, y| *x = *x $operator *y);
+                out
             }
         }
 
         impl<T, S, const N : usize> $trt<S> for Cartessian<T, N>
-        where T : $trt<S, Output = T> + Clone + Debug,
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
               S : Scalar{
             type Output = Cartessian<T, N>;
 
             fn $mth(mut self, c : S) -> Cartessian<T, N>{
                 self.map_inplace(move |elt|{
-                    *elt = elt.clone() $operator c.clone();
+                    *elt = *elt $operator c;
                 });
                 self
             }
         }
 
         impl<'a, T, S, const N : usize> $trt<S> for &'a Cartessian<T, N>
-        where T : $trt<S, Output = T> + Clone + Debug,
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
               S : Scalar{
             type Output = Cartessian<T, N>;
 
             fn $mth(self, c : S) -> Cartessian<T, N>{
-                self.map(move |elt| elt.clone() $operator c.clone())
+                let mut out = self.clone();
+                out.map_inplace( move |elt| {
+                    *elt = *elt $operator c;
+                });
+                out
             }
         }
 
 
         impl<T> $trt<CartessianND<T>> for CartessianND<T>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = CartessianND<T>;
 
-            fn $mth(self, rhs : Self) -> Self{
+            fn $mth(mut self, rhs : Self) -> Self{
                 if self.dim() != rhs.dim(){
                     panic!("Binary operation between vectors with different lengths are not available.");
                 }
 
-                let mut out = self.clone();
-                out.zip_mut_with(&rhs, clone_iopf(T::$mth));
-
-                out
+                self.zip_mut_with(&rhs, clone_iopf(T::$mth));
+                self
             }
         }
 
         impl<'a, T> $trt<&'a CartessianND<T>> for CartessianND<T>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = CartessianND<T>;
 
-            fn $mth(self, rhs : &Self) -> Self{
+            fn $mth(mut self, rhs : &Self) -> Self{
                 if self.dim() != rhs.dim(){
                     panic!("Binary operation between vectors with different lengths are not available.");
                 }
 
-                let mut out = self.clone();
-                out.zip_mut_with(rhs, clone_iopf(T::$mth));
-
-                out
+                self.zip_mut_with(rhs, clone_iopf(T::$mth));
+                self
             }
         }
 
         impl<'a, T> $trt<CartessianND<T>> for &'a CartessianND<T>
-        where T : $trt<Output = T> + Clone{
+        where T : $trt<Output = T> + Copy + Clone{
             type Output = CartessianND<T>;
 
-            fn $mth(self, rhs : CartessianND<T>) -> CartessianND<T>{
+            fn $mth(self, mut rhs : CartessianND<T>) -> CartessianND<T>{
                 if self.dim() != rhs.dim(){
                     panic!("Binary operation between vectors with different lengths are not available.");
                 }
 
-                let mut out = rhs.clone();
-                out.zip_mut_with(self, clone_iopf_rev(T::$mth));
-
-                out
+                rhs.zip_mut_with(self, clone_iopf_rev(T::$mth));
+                rhs
             }
         }
 
         impl<'a, T> $trt<&'a CartessianND<T>> for &'a CartessianND<T>
-        where T : $trt<Output = T> + Clone + Debug{
+        where T : $trt<Output = T> + Copy + Clone + Debug{
             type Output = CartessianND<T>;
 
             fn $mth(self, rhs : &CartessianND<T>) -> CartessianND<T>{
@@ -188,33 +179,36 @@ macro_rules! impl_binary_op{
                     panic!("Binary operation between vectors with different lengths are not available.");
                 }
 
-                CartessianND::<T>::from_iter(
-                    self.into_iter().zip(rhs)
-                        .map(|(x, y)| x.clone() $operator y.clone())
-                    )
+                let mut out = self.clone();
+                out.zip_mut_with(rhs, |x, y| *x = *x $operator *y);
+                out
             }
         }
 
         impl<T, S> $trt<S> for CartessianND<T>
-        where T : $trt<S, Output = T> + Clone + Debug,
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
               S : Scalar{
             type Output = CartessianND<T>;
 
             fn $mth(mut self, c : S) -> CartessianND<T>{
                 self.map_inplace(move |elt|{
-                    *elt = elt.clone() $operator c.clone();
+                    *elt = *elt $operator c;
                 });
                 self
             }
         }
 
         impl<'a, T, S> $trt<S> for &'a CartessianND<T>
-        where T : $trt<S, Output = T> + Clone + Debug,
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
               S : Scalar{
             type Output = CartessianND<T>;
 
             fn $mth(self, c : S) -> CartessianND<T>{
-                self.map(move |elt| elt.clone() $operator c.clone())
+                let mut out = self.clone();
+                out.map_inplace(move |elt| {
+                    *elt = *elt $operator c;
+                });
+                out
             }
         }
     };
@@ -233,11 +227,10 @@ macro_rules! impl_scalar_lhs_op {
     ($scalar:ty, $commutative:ident, $operator:tt, $trt:ident, $mth:ident, $doc:expr) => (
         impl<const N : usize> $trt<Cartessian<$scalar, N>> for $scalar{
             type Output = Cartessian<$scalar, N>;
-            fn $mth(self, rhs: Cartessian<$scalar, N>) -> Cartessian<$scalar, N> {
+            fn $mth(self, #[allow(unused_mut)] mut rhs: Cartessian<$scalar, N>) -> Cartessian<$scalar, N> {
                 if_commutative!($commutative {
                     rhs.$mth(self)
                 } or {{
-                    let mut rhs = rhs;
                     rhs.map_inplace(move |elt| {
                         *elt = self $operator *elt;
                     });
@@ -252,18 +245,22 @@ macro_rules! impl_scalar_lhs_op {
                 if_commutative!($commutative {
                     rhs.$mth(self)
                 } or {{
-                    rhs.map(move |elt| self.clone() $operator elt.clone())
+                    let mut out = rhs.clone();
+                    out.map_inplace(move |elt|{
+                        *elt = self $operator *elt;
+                    });
+                    out
                 }})
             }
         }
 
+
         impl $trt<CartessianND<$scalar>> for $scalar{
             type Output = CartessianND<$scalar>;
-            fn $mth(self, rhs: CartessianND<$scalar>) -> CartessianND<$scalar> {
+            fn $mth(self, #[allow(unused_mut)] mut rhs: CartessianND<$scalar>) -> CartessianND<$scalar> {
                 if_commutative!($commutative {
                     rhs.$mth(self)
                 } or {{
-                    let mut rhs = rhs;
                     rhs.map_inplace(move |elt| {
                         *elt = self $operator *elt;
                     });
@@ -278,7 +275,11 @@ macro_rules! impl_scalar_lhs_op {
                 if_commutative!($commutative {
                     rhs.$mth(self)
                 } or {{
-                    rhs.map(move |elt| self.clone() $operator elt.clone())
+                    let mut out = rhs.clone();
+                    out.map_inplace(move |elt| {
+                        *elt = self $operator *elt;
+                    });
+                    out
                 }})
             }
         }
@@ -321,46 +322,63 @@ all_scalar_ops!(Complex64);
 macro_rules! impl_assign_op{
     ($trt : ident, $mth : ident, $doc : expr) => {
 
-        impl<'a, T, const N : usize> $trt<&'a Cartessian<T, N>> for Cartessian<T, N>
-        where T : $trt<T> + Clone{
+        impl<T, const N : usize> $trt<Cartessian<T, N>> for Cartessian<T, N>
+        where T : $trt<T> + Copy{
 
-            fn $mth(&mut self, rhs : &'a Cartessian<T, N>){
-                for (x, y) in self.iter_mut().zip(rhs){
-                    x.$mth(y.clone());
-                }
+            fn $mth(&mut self, rhs : Cartessian<T, N>){
+                self.zip_mut_with(&rhs, |x, y| x.$mth(*y));
             }
         }
 
+        impl<'a, T, const N : usize> $trt<&'a Cartessian<T, N>> for Cartessian<T, N>
+        where T : $trt<T> + Copy{
+
+            fn $mth(&mut self, rhs : &'a Cartessian<T, N>){
+                self.zip_mut_with(rhs, |x, y| x.$mth(*y));
+            }
+        }
+
+
         impl<'a, T, const N : usize> $trt<T> for Cartessian<T, N>
-        where T : $trt<T> + Clone{
+        where T : $trt<T> + Copy{
 
             fn $mth(&mut self, rhs : T){
                 self.map_inplace(move |elt| {
-                    elt.$mth(rhs.clone());
+                    elt.$mth(rhs);
                 })
             }
         }
 
+        impl<T> $trt<CartessianND<T>> for CartessianND<T>
+        where T : $trt<T> + Copy{
+
+            fn $mth(&mut self, rhs : CartessianND<T>){
+                if self.dim() != rhs.dim(){
+                    panic!("Binary operation between vectors with different lengths are not available.");
+                }
+
+                self.zip_mut_with(&rhs, |x, y| x.$mth(*y));
+            }
+        }
+
         impl<'a, T> $trt<&'a CartessianND<T>> for CartessianND<T>
-        where T : $trt<T> + Clone{
+        where T : $trt<T> + Copy{
 
             fn $mth(&mut self, rhs : &'a CartessianND<T>){
                 if self.dim() != rhs.dim(){
                     panic!("Binary operation between vectors with different lengths are not available.");
                 }
 
-                for (x, y) in self.iter_mut().zip(rhs){
-                    x.$mth(y.clone());
-                }
+                self.zip_mut_with(rhs, |x, y| x.$mth(*y));
             }
         }
 
         impl<'a, T> $trt<T> for CartessianND<T>
-        where T : $trt<T> + Clone{
+        where T : $trt<T> + Copy{
 
             fn $mth(&mut self, rhs : T){
                 self.map_inplace(move |elt| {
-                    elt.$mth(rhs.clone());
+                    elt.$mth(rhs);
                 })
             }
         }
@@ -389,7 +407,7 @@ impl_assign_op!(
 );
 
 impl<T, const N : usize> Neg for Cartessian<T, N>
-        where T : Neg<Output = T> + Clone{
+        where T : Neg<Output = T> + Copy + Clone{
     type Output = Self;
 
     fn neg(mut self) -> Self{
@@ -402,7 +420,7 @@ impl<T, const N : usize> Neg for Cartessian<T, N>
 
 
 impl<T> Neg for CartessianND<T>
-        where T : Neg<Output = T> + Clone{
+        where T : Neg<Output = T> + Copy + Clone{
     type Output = Self;
 
     fn neg(mut self) -> Self{
