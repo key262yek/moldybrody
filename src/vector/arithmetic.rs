@@ -127,6 +127,20 @@ macro_rules! impl_binary_op{
             }
         }
 
+        impl<'a, T, S, const N : usize> $trt<S> for &'a mut Cartessian<T, N>
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
+              S : Scalar{
+            type Output = Cartessian<T, N>;
+
+            fn $mth(self, c : S) -> Cartessian<T, N>{
+                let mut out = self.clone();
+                out.map_inplace( move |elt| {
+                    *elt = *elt $operator c;
+                });
+                out
+            }
+        }
+
 
         impl<T> $trt<CartessianND<T>> for CartessianND<T>
         where T : $trt<Output = T> + Copy + Clone{
@@ -199,6 +213,20 @@ macro_rules! impl_binary_op{
         }
 
         impl<'a, T, S> $trt<S> for &'a CartessianND<T>
+        where T : $trt<S, Output = T> + Copy + Clone + Debug,
+              S : Scalar{
+            type Output = CartessianND<T>;
+
+            fn $mth(self, c : S) -> CartessianND<T>{
+                let mut out = self.clone();
+                out.map_inplace(move |elt| {
+                    *elt = *elt $operator c;
+                });
+                out
+            }
+        }
+
+        impl<'a, T, S> $trt<S> for &'a mut CartessianND<T>
         where T : $trt<S, Output = T> + Copy + Clone + Debug,
               S : Scalar{
             type Output = CartessianND<T>;
