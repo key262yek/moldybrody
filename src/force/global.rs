@@ -1,3 +1,4 @@
+use crate::vector::Dim;
 use std::ops::Div;
 use std::ops::IndexMut;
 use std::ops::Index;
@@ -52,11 +53,11 @@ impl<'a, S, V, T> Global<'a, S> for ConstGravity<V>
     }
 }
 
-pub struct Lorentz<V : Vector>{
+pub struct Lorentz<V : Vector + Dim<3>>{
     pub mag_field : V,
 }
 
-impl<V : Vector> Lorentz<V>{
+impl<V : Vector + Dim<3>> Lorentz<V>{
     #[allow(dead_code)]
     pub fn new(mag_field : V) -> Self{
         Self{
@@ -67,7 +68,7 @@ impl<V : Vector> Lorentz<V>{
 
 impl<'a, S, V, T> Global<'a, S> for Lorentz<V>
     where  S : State<Position = V> + Charge<T> + HasVelocity,
-           V : Vector<Item = T> + Cross<&'a V, Output = V> + Index<usize, Output = T> + IndexMut<usize> + Div<T, Output = V> + 'a,
+           V : Vector<Item = T> + Dim<3> + Cross<&'a V, Output = V> + Index<usize, Output = T> + IndexMut<usize> + Div<T, Output = V> + 'a,
            T : Scalar + Mul<V, Output = V> + Neg<Output = T>{
     type Force = V;
     type Potential = V;
