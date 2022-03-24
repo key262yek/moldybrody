@@ -8,6 +8,7 @@
 //! 각각의 case에서 모두 같은 [rand crate](https://docs.rs/rand/0.8.4/rand/)의 Pcg64를 random number generator로 씁니다.
 //! 이를 declare하고 각 module에서 사용할 수 있도록 wrapping 해줍니다.
 
+use rand::prelude::Distribution;
 use crate::prelude::*;
 use rand_distr::{StandardNormal, Open01};
 use rand::Rng;
@@ -44,7 +45,8 @@ pub fn rng_seed(seed : u128) -> Pcg64{
 /// let mut rng = rng_seed(seed);
 /// let uni = get_uniform(&mut rng);
 /// ```
-pub fn get_uniform(rng : &mut Pcg64) -> f64{
+pub fn get_uniform<T>(rng : &mut Pcg64) -> T
+     where Open01: Distribution<T>{
     rng.sample(Open01)
 }
 
@@ -62,6 +64,7 @@ pub fn get_uniform(rng : &mut Pcg64) -> f64{
 /// let mut rng = rng_seed(seed);
 /// let gas = get_gaussian(&mut rng);
 /// ```
-pub fn get_gaussian(rng : &mut Pcg64) -> f64{
+pub fn get_gaussian<T>(rng : &mut Pcg64) -> T
+    where StandardNormal : Distribution<T>{
     rng.sample(StandardNormal)
 }
