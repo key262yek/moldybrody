@@ -1,13 +1,17 @@
 
 
 
+// use crate::boundary::BoundaryCondition;
+// use crate::boundary::AfterMove;
+use crate::boundary::Periodic;
+use crate::boundary::NonPeriodic;
 use crate::format_convert::{Brief, ConvertBrief};
 use std::fmt::Formatter;
 use std::fmt::{self, Display};
 use std::fmt::LowerExp;
 use std::ops::Rem;
 use crate::{prelude::Error, vector::Dim};
-use crate::boundary::Boundary;
+use crate::boundary::{FloatBoundary, IntBoundary};
 use std::convert::TryInto;
 use std::ops::Div;
 use crate::vector::product::Norm;
@@ -55,9 +59,11 @@ impl<T> SimplePlane<T>{
     }
 }
 
+impl<T> NonPeriodic for SimplePlane<T> {}
+
 macro_rules! impl_float_simpleplane {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for SimplePlane<$ty>{
+        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for SimplePlane<$ty>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 if self.idx >= N{
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -152,9 +158,51 @@ macro_rules! impl_float_simpleplane {
                     },
                 }
             }
+
+            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                if self.idx >= N{
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                } else if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let destination = pos + movement;
+                if self.check_inclusion(&destination){
+                    return None;
+                }
+
+                match self.dir_in{
+                    Direction::Positive => {
+                        let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                        return Some(t);
+                    },
+                    Direction::Negative => {
+                        let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                        return Some(t);
+                    },
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                let destination = pos + movement;
+                if self.check_inclusion(&destination){
+                    return None;
+                }
+
+                match self.dir_in{
+                    Direction::Positive => {
+                        let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                        return Some(t);
+                    },
+                    Direction::Negative => {
+                        let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                        return Some(t);
+                    },
+                }
+            }
         }
 
-        impl Boundary<CartessianND<$ty>> for SimplePlane<$ty>{
+        impl FloatBoundary<CartessianND<$ty>> for SimplePlane<$ty>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.idx >= pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -263,6 +311,54 @@ macro_rules! impl_float_simpleplane {
                     },
                 }
             }
+
+            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                if self.idx >= pos.dim(){
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                } else if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                match self.dir_in{
+                    Direction::Positive => {
+                        if pos[self.idx] + movement[self.idx] >= self.pos{
+                            return None;
+                        } else {
+                            let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                            return Some(t);
+                        }
+                    },
+                    Direction::Negative => {
+                        if pos[self.idx] + movement[self.idx] <= self.pos{
+                            return None;
+                        } else {
+                            let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                            return Some(t);
+                        }
+                    },
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                match self.dir_in{
+                    Direction::Positive => {
+                        if pos[self.idx] + movement[self.idx] >= self.pos{
+                            return None;
+                        } else {
+                            let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                            return Some(t);
+                        }
+                    },
+                    Direction::Negative => {
+                        if pos[self.idx] + movement[self.idx] <= self.pos{
+                            return None;
+                        } else {
+                            let t = (self.pos - pos[self.idx]) / movement[self.idx];
+                            return Some(t);
+                        }
+                    },
+                }
+            }
         }
     };
 }
@@ -272,7 +368,7 @@ impl_float_simpleplane!(f64);
 
 macro_rules! impl_int_simpleplane {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for SimplePlane<$ty>{
+        impl<const N : usize> IntBoundary<Cartessian<$ty, N>> for SimplePlane<$ty>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 if self.idx >= N{
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -371,7 +467,7 @@ macro_rules! impl_int_simpleplane {
             }
         }
 
-        impl Boundary<CartessianND<$ty>> for SimplePlane<$ty>{
+        impl IntBoundary<CartessianND<$ty>> for SimplePlane<$ty>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.idx >= pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -555,9 +651,11 @@ impl<'a, V> Plane<V>
     }
 }
 
+impl<V: Vector> NonPeriodic for Plane<V> {}
+
 macro_rules! impl_float_plane {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for Plane<Cartessian<$ty, N>>{
+        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for Plane<Cartessian<$ty, N>>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 let d = self.normal_vec.dot(pos);
 
@@ -600,9 +698,33 @@ macro_rules! impl_float_plane {
                 let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(pos + movement * t);
             }
+
+            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let destination = pos + movement;
+                if self.check_inclusion(&destination){
+                    return None;
+                }
+
+                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                return Some(t);
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                let destination = pos + movement;
+                if self.check_inclusion(&destination){
+                    return None;
+                }
+
+                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                return Some(t);
+            }
         }
 
-        impl Boundary<CartessianND<$ty>> for Plane<CartessianND<$ty>>{
+        impl FloatBoundary<CartessianND<$ty>> for Plane<CartessianND<$ty>>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 let d = self.normal_vec.dot(pos);
 
@@ -651,6 +773,32 @@ macro_rules! impl_float_plane {
                 result.clone_from(pos);
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y * t);
                 return Some(result);
+            }
+
+            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let mut result = pos.clone();
+                result.zip_mut_with(movement, move |x, y| *x = *x + *y);
+                if self.check_inclusion(&result){
+                    return None;
+                }
+
+                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                return Some(t);
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                let mut result = pos.clone();
+                result.zip_mut_with(movement, move |x, y| *x = *x + *y);
+                if self.check_inclusion(&result){
+                    return None;
+                }
+
+                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                return Some(t);
             }
         }
     };
@@ -726,9 +874,10 @@ impl<T : PartialOrd + Copy + AbsDiffEq> SimplePlanePair<T>{
     }
 }
 
+
 macro_rules! impl_float_simpleplanepair {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
+        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 if self.idx >= N{
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -796,9 +945,70 @@ macro_rules! impl_float_simpleplanepair {
                     return None;
                 }
             }
+
+            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
+                if self.idx >= N{
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                } else if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let destination = pos[self.idx] + movement[self.idx];
+                if destination < self.pos[0]{
+                    let t = (self.pos[0] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else if self.pos[1] < destination{
+                    let t = (self.pos[1] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
+                let destination = pos[self.idx] + movement[self.idx];
+                if destination < self.pos[0]{
+                    let t = (self.pos[0] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else if self.pos[1] < destination{
+                    let t = (self.pos[1] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
         }
 
-        impl Boundary<CartessianND<$ty>> for SimplePlanePair<$ty>{
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+                if self.idx >= N {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                let mut result = pos.clone();
+                if result[self.idx] < self.pos[0]{
+                    result[self.idx] += self.pos[1] - self.pos[0];
+                } else if self.pos[1] < result[self.idx]{
+                    result[self.idx] -= self.pos[1] - self.pos[0];
+                }
+
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+                if self.idx >= N {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                if pos[self.idx] < self.pos[0]{
+                    pos[self.idx] += self.pos[1] - self.pos[0];
+                } else if self.pos[1] < pos[self.idx]{
+                    pos[self.idx] -= self.pos[1] - self.pos[0];
+                }
+            }
+        }
+
+        impl FloatBoundary<CartessianND<$ty>> for SimplePlanePair<$ty>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.idx >= pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -872,6 +1082,67 @@ macro_rules! impl_float_simpleplanepair {
                     return Some(result);
                 } else {
                     return None;
+                }
+            }
+
+            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
+                if self.idx >= pos.dim(){
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                } else if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let destination = pos[self.idx] + movement[self.idx];
+                if destination < self.pos[0]{
+                    let t = (self.pos[0] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else if self.pos[1] < destination{
+                    let t = (self.pos[1] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
+                let destination = pos[self.idx] + movement[self.idx];
+                if destination < self.pos[0]{
+                    let t = (self.pos[0] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else if self.pos[1] < destination{
+                    let t = (self.pos[1] - pos[self.idx]) / movement[self.idx];
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+        }
+
+        impl Periodic<CartessianND<$ty>> for SimplePlanePair<$ty>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+                if self.idx >= pos.dim() {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                let mut result = pos.clone();
+                if result[self.idx] < self.pos[0]{
+                    result[self.idx] += self.pos[1] - self.pos[0];
+                } else if self.pos[1] < result[self.idx]{
+                    result[self.idx] -= self.pos[1] - self.pos[0];
+                }
+
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+                if self.idx >= pos.dim() {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                if pos[self.idx] < self.pos[0]{
+                    pos[self.idx] += self.pos[1] - self.pos[0];
+                } else if self.pos[1] < pos[self.idx]{
+                    pos[self.idx] -= self.pos[1] - self.pos[0];
                 }
             }
         }
@@ -883,7 +1154,7 @@ impl_float_simpleplanepair!(f64);
 
 macro_rules! impl_int_simpleplanepair {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
+        impl<const N : usize> IntBoundary<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 if self.idx >= N{
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -945,7 +1216,36 @@ macro_rules! impl_int_simpleplanepair {
             }
         }
 
-        impl Boundary<CartessianND<$ty>> for SimplePlanePair<$ty>{
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for SimplePlanePair<$ty>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+                if self.idx >= N {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                let mut result = pos.clone();
+                if result[self.idx] < self.pos[0]{
+                    result[self.idx] += self.pos[1] - self.pos[0] + 1;
+                } else if self.pos[1] < result[self.idx]{
+                    result[self.idx] -= self.pos[1] - self.pos[0] + 1;
+                }
+
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+                if self.idx >= N {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                if pos[self.idx] < self.pos[0]{
+                    pos[self.idx] += self.pos[1] - self.pos[0] + 1;
+                } else if self.pos[1] < pos[self.idx]{
+                    pos[self.idx] -= self.pos[1] - self.pos[0] + 1;
+                }
+            }
+        }
+
+        impl IntBoundary<CartessianND<$ty>> for SimplePlanePair<$ty>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.idx >= pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
@@ -1003,6 +1303,35 @@ macro_rules! impl_int_simpleplanepair {
                     return Some(pos.clone());
                 } else {
                     return None;
+                }
+            }
+        }
+
+        impl Periodic<CartessianND<$ty>> for SimplePlanePair<$ty>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+                if self.idx >= pos.dim() {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                let mut result = pos.clone();
+                if result[self.idx] < self.pos[0]{
+                    result[self.idx] += self.pos[1] - self.pos[0] + 1;
+                } else if self.pos[1] < result[self.idx]{
+                    result[self.idx] -= self.pos[1] - self.pos[0] + 1;
+                }
+
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+                if self.idx >= pos.dim() {
+                    panic!("Dimensionality of plane and position vector are not compatible. index out of bounds");
+                }
+
+                if pos[self.idx] < self.pos[0]{
+                    pos[self.idx] += self.pos[1] - self.pos[0] + 1;
+                } else if self.pos[1] < pos[self.idx]{
+                    pos[self.idx] -= self.pos[1] - self.pos[0] + 1;
                 }
             }
         }
@@ -1079,9 +1408,11 @@ impl<V> PlanePair<V>
     }
 }
 
+
+
 macro_rules! impl_float_planepair {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>>{
+        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 let d = self.normal_vec.dot(pos);
 
@@ -1139,9 +1470,68 @@ macro_rules! impl_float_planepair {
                     return None;
                 }
             }
+
+            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let d = self.normal_vec.dot(pos + movement);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+                let d = self.normal_vec.dot(pos + movement);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
         }
 
-        impl Boundary<CartessianND<$ty>> for PlanePair<CartessianND<$ty>>{
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+                let d = self.normal_vec.dot(pos);
+                let mut res = pos.clone();
+
+                if d < self.constant[0]{
+                    let dx = self.constant[1] - self.constant[0];
+                    res += dx * &self.normal_vec;
+                } else if self.constant[1] < d{
+                    let dx = self.constant[1] - self.constant[0];
+                    res -= dx * &self.normal_vec;
+                }
+
+                return res;
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+                let d = self.normal_vec.dot(&*pos);
+
+                if d < self.constant[0]{
+                    let dx = self.constant[1] - self.constant[0];
+                    *pos += dx * &self.normal_vec;
+                } else if self.constant[1] < d{
+                    let dx = self.constant[1] - self.constant[0];
+                    *pos -= dx * &self.normal_vec;
+                }
+            }
+        }
+
+        impl FloatBoundary<CartessianND<$ty>> for PlanePair<CartessianND<$ty>>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 let d = self.normal_vec.dot(pos);
 
@@ -1209,6 +1599,69 @@ macro_rules! impl_float_planepair {
                     return Some(result);
                 } else {
                     return None;
+                }
+            }
+
+            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let mut result = pos.clone();
+                result.zip_mut_with(movement, |x, y| *x = *x + *y);
+                let d = self.normal_vec.dot(&result);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+                let mut result = pos.clone();
+                result.zip_mut_with(movement, |x, y| *x = *x + *y);
+                let d = self.normal_vec.dot(&result);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    return Some(t);
+                } else {
+                    return None;
+                }
+            }
+        }
+
+        impl Periodic<CartessianND<$ty>> for PlanePair<CartessianND<$ty>>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+                let d = self.normal_vec.dot(pos);
+                let mut res = pos.clone();
+
+                if d < self.constant[0]{
+                    let dx = self.constant[1] - self.constant[0];
+                    res.zip_mut_with(&self.normal_vec, |x, y| *x = *x + *y * dx);
+                } else if self.constant[1] < d{
+                    let dx = self.constant[1] - self.constant[0];
+                    res.zip_mut_with(&self.normal_vec, |x, y| *x = *x - *y * dx);
+                }
+
+                return res;
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+                let d = self.normal_vec.dot(&*pos);
+
+                if d < self.constant[0]{
+                    let dx = self.constant[1] - self.constant[0];
+                    pos.zip_mut_with(&self.normal_vec, |x, y| *x = *x + *y * dx);
+                } else if self.constant[1] < d{
+                    let dx = self.constant[1] - self.constant[0];
+                    pos.zip_mut_with(&self.normal_vec, |x, y| *x = *x - *y * dx);
                 }
             }
         }
@@ -1306,9 +1759,109 @@ impl<T, const N : usize> SimpleBox<T, N>{
     }
 }
 
-impl<T, const N : usize> Boundary<Cartessian<T, N>> for SimpleBox<T, N>
+impl<T, const N : usize> FloatBoundary<Cartessian<T, N>> for SimpleBox<T, N>
     where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : Boundary<Cartessian<T, N>>{
+          SimplePlanePair<T> : FloatBoundary<Cartessian<T, N>>{
+    fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
+        self.planes.iter().all(|p| p.check_inclusion(pos))
+    }
+
+    fn normal_at(&self, pos : &Cartessian<T, N>) -> Option<Cartessian<T, N>>{
+        for plane in &self.planes{
+            match plane.normal_at(pos){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn normal_at_unsafe(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
+      for plane in &self.planes{
+            match plane.normal_at(pos){
+                Some(v) => {return v},
+                None => {},
+            }
+        }
+        panic!("Position is not on the boundaries");
+    }
+
+    fn find_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
+        if !self.check_inclusion(pos){
+            panic!("State cannot live outside of system boundary. Move from outside occurs");
+        } else if self.check_inclusion(&(pos + movement)){
+            return None;
+        }
+
+        for plane in &self.planes{
+            match plane.find_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn find_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes{
+            match plane.find_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn ratio_to_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
+        if !self.check_inclusion(pos){
+            panic!("State cannot live outside of system boundary. Move from outside occurs");
+        } else if self.check_inclusion(&(pos + movement)){
+            return None;
+        }
+
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+}
+
+impl<T, const N : usize> Periodic<Cartessian<T, N>> for SimpleBox<T, N>
+    where T : Scalar,
+          SimplePlanePair<T> : Periodic<Cartessian<T, N>>{
+    fn find_pair(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
+        let mut result = pos.clone();
+        for planepair in &self.planes{
+            planepair.find_pair_mut(&mut result);
+        }
+        return result;
+    }
+
+    fn find_pair_mut(&self, pos : &mut Cartessian<T, N>) {
+        for planepair in &self.planes{
+            planepair.find_pair_mut(pos);
+        }
+    }
+}
+
+
+
+impl<T, const N : usize> IntBoundary<Cartessian<T, N>> for SimpleBox<T, N>
+    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+          SimplePlanePair<T> : IntBoundary<Cartessian<T, N>>{
     fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
@@ -1360,9 +1913,108 @@ impl<T, const N : usize> Boundary<Cartessian<T, N>> for SimpleBox<T, N>
     }
 }
 
-impl<T, const N : usize> Boundary<CartessianND<T>> for SimpleBox<T, N>
+impl<T, const N : usize> FloatBoundary<CartessianND<T>> for SimpleBox<T, N>
     where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : Boundary<CartessianND<T>>{
+          SimplePlanePair<T> : FloatBoundary<CartessianND<T>>{
+    fn check_inclusion(&self, pos : &CartessianND<T>) -> bool{
+        self.planes.iter().all(|p| p.check_inclusion(pos))
+    }
+
+    fn normal_at(&self, pos : &CartessianND<T>) -> Option<CartessianND<T>>{
+        for plane in &self.planes{
+            match plane.normal_at(pos){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn normal_at_unsafe(&self, pos : &CartessianND<T>) -> CartessianND<T> {
+      for plane in &self.planes{
+            match plane.normal_at(pos){
+                Some(v) => {return v},
+                None => {},
+            }
+        }
+        panic!("Position is not on the boundaries");
+    }
+
+    fn find_intersect(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
+        if !self.check_inclusion(pos){
+            panic!("State cannot live outside of system boundary. Move from outside occurs");
+        } else if self.check_inclusion(&(pos + movement)){
+            return None;
+        }
+
+        for plane in &self.planes{
+            match plane.find_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn find_intersect_unsafe(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
+        for plane in &self.planes{
+            match plane.find_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn ratio_to_intersect(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<T> {
+        if !self.check_inclusion(pos){
+            panic!("State cannot live outside of system boundary. Move from outside occurs");
+        } else if self.check_inclusion(&(pos + movement)){
+            return None;
+        }
+
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<T> {
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+}
+
+impl<T, const N : usize> Periodic<CartessianND<T>> for SimpleBox<T, N>
+    where T : Scalar,
+          SimplePlanePair<T> : Periodic<CartessianND<T>>{
+    fn find_pair(&self, pos : &CartessianND<T>) -> CartessianND<T> {
+        let mut result = pos.clone();
+        for planepair in &self.planes{
+            planepair.find_pair_mut(&mut result);
+        }
+        return result;
+    }
+
+    fn find_pair_mut(&self, pos : &mut CartessianND<T>) {
+        for planepair in &self.planes{
+            planepair.find_pair_mut(pos);
+        }
+    }
+}
+
+
+impl<T, const N : usize> IntBoundary<CartessianND<T>> for SimpleBox<T, N>
+    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+          SimplePlanePair<T> : IntBoundary<CartessianND<T>>{
     fn check_inclusion(&self, pos : &CartessianND<T>) -> bool{
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
@@ -1413,6 +2065,7 @@ impl<T, const N : usize> Boundary<CartessianND<T>> for SimpleBox<T, N>
         return None;
     }
 }
+
 
 impl<T : Clone + Display, const N : usize> Display for SimpleBox<T, N>{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1475,9 +2128,10 @@ impl<V : Vector> Cube<V>{
     }
 }
 
+
 macro_rules! impl_float_cube {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
+        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 for (c, x) in self.center.into_iter().zip(pos){
                     if (*x - *c) > self.radius || (*x - *c) < -self.radius{
@@ -1548,9 +2202,65 @@ macro_rules! impl_float_cube {
                 }
                 return None;
             }
+
+            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                for idx in 0..N{
+                    let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
+                    if p + m < c -self.radius{
+                        let t = (c - self.radius - p) / m;
+                        return Some(t);
+                    } else if p + m > c + self.radius{
+                        let t = (c + self.radius - p) / m;
+                        return Some(t);
+                    }
+                }
+                return None;
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
+                for idx in 0..N{
+                    let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
+                    if p + m < c -self.radius{
+                        let t = (c - self.radius - p) / m;
+                        return Some(t);
+                    } else if p + m > c + self.radius{
+                        let t = (c + self.radius - p) / m;
+                        return Some(t);
+                    }
+                }
+                return None;
+            }
         }
 
-        impl Boundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+                let mut result = pos.clone();
+                result.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius;
+                    }
+                });
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+                pos.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius;
+                    }
+                });
+            }
+        }
+
+        impl FloatBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.center.dim() != pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible.");
@@ -1638,6 +2348,64 @@ macro_rules! impl_float_cube {
                     }
                 }
                 return None;
+            }
+
+            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
+                if !self.check_inclusion(pos){
+                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+                }
+
+                let n = pos.dim();
+                for idx in 0..n{
+                    let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
+                    if p + m < c -self.radius{
+                        let t = (c - self.radius - p) / m;
+                        return Some(t);
+                    } else if p + m > c + self.radius{
+                        let t = (c + self.radius - p) / m;
+                        return Some(t);
+                    }
+                }
+                return None;
+            }
+
+            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
+                let n = pos.dim();
+                for idx in 0..n{
+                    let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
+                    if p + m < c -self.radius{
+                        let t = (c - self.radius - p) / m;
+                        return Some(t);
+                    } else if p + m > c + self.radius{
+                        let t = (c + self.radius - p) / m;
+                        return Some(t);
+                    }
+                }
+                return None;
+            }
+        }
+
+        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+                let mut result = pos.clone();
+                result.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius;
+                    }
+                });
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+                pos.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius;
+                    }
+                });
             }
         }
     };
@@ -1648,7 +2416,7 @@ impl_float_cube!(f64);
 
 macro_rules! impl_int_cube {
     ($ty : ident) => {
-        impl<const N : usize> Boundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
+        impl<const N : usize> IntBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
             fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
                 for (c, x) in self.center.into_iter().zip(pos){
                     if (*x - *c) > self.radius || (*x - *c) < -self.radius{
@@ -1712,7 +2480,31 @@ macro_rules! impl_int_cube {
             }
         }
 
-        impl Boundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+                let mut result = pos.clone();
+                result.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius + 1 as $ty;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius + 1 as $ty;
+                    }
+                });
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+                pos.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius + 1 as $ty;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius + 1 as $ty;
+                    }
+                });
+            }
+        }
+
+        impl IntBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
             fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
                 if self.center.dim() != pos.dim(){
                     panic!("Dimensionality of plane and position vector are not compatible.");
@@ -1782,6 +2574,30 @@ macro_rules! impl_int_cube {
                     }
                 }
                 return None;
+            }
+        }
+
+        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+                let mut result = pos.clone();
+                result.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius + 1 as $ty;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius + 1 as $ty;
+                    }
+                });
+                return result;
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+                pos.zip_mut_with(&self.center, |x, y| {
+                    if *x < *y - self.radius{
+                        *x += 2 as $ty * self.radius + 1 as $ty;
+                    } else if *y + self.radius < *x {
+                        *x -= 2 as $ty * self.radius + 1 as $ty;
+                    }
+                });
             }
         }
     };
@@ -1860,9 +2676,9 @@ impl<T : Scalar, const N : usize> Parallelogram<T, N>{
     }
 }
 
-impl<T, const N : usize> Boundary<Cartessian<T, N>> for Parallelogram<T, N>
+impl<T, const N : usize> FloatBoundary<Cartessian<T, N>> for Parallelogram<T, N>
     where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          PlanePair<Cartessian<T, N>> : Boundary<Cartessian<T, N>>{
+          PlanePair<Cartessian<T, N>> : FloatBoundary<Cartessian<T, N>>{
     fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
@@ -1912,7 +2728,52 @@ impl<T, const N : usize> Boundary<Cartessian<T, N>> for Parallelogram<T, N>
         }
         return None;
     }
+
+    fn ratio_to_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
+        if !self.check_inclusion(pos){
+            panic!("State cannot live outside of system boundary. Move from outside occurs");
+        } else if self.check_inclusion(&(pos + movement)){
+            return None;
+        }
+
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
+
+    fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
+        for plane in &self.planes{
+            match plane.ratio_to_intersect_unsafe(pos, movement){
+                Some(v) => {return Some(v)},
+                None => {},
+            }
+        }
+        return None;
+    }
 }
+
+impl<T, const N : usize> Periodic<Cartessian<T, N>> for Parallelogram<T, N>
+    where T : Scalar,
+          PlanePair<Cartessian<T, N>> : Periodic<Cartessian<T, N>>{
+    fn find_pair(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
+        let mut result = pos.clone();
+        for planepair in &self.planes{
+            planepair.find_pair_mut(&mut result);
+        }
+        return result;
+    }
+
+    fn find_pair_mut(&self, pos : &mut Cartessian<T, N>) {
+        for planepair in &self.planes{
+            planepair.find_pair_mut(pos);
+        }
+    }
+}
+
 
 impl<T : Display + LowerExp + Scalar, const N : usize> Display for Parallelogram<T, N>{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1987,15 +2848,15 @@ mod test {
 
         a[0] = 2f64;
         let mut movement = Cartessian2D::new([-2f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(Cartessian2D::new([1f64, 1f64])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1f64, 1f64])));
+        assert_eq!(plane.find_intersect(&a, &movement), Some(Cartessian2D::new([1f64; 2])));
+        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1f64; 2])));
 
         movement[0] = -0.5f64;
         assert_eq!(plane.find_intersect(&a, &movement), None);
         assert_eq!(plane.find_intersect_unsafe(&a, &movement), None);
 
         // float ND
-        let mut a = CartessianND::new(vec![2f64; 2]);
+        let mut a : CartessianND<f64> = CartessianND::new(vec![2f64; 2]);
         assert_eq!(plane.check_inclusion(&a), true);
         assert_eq!(plane.normal_at(&a), None);
 
@@ -2010,8 +2871,8 @@ mod test {
 
         a[0] = 2f64;
         let mut movement = CartessianND::new(vec![-2f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(CartessianND::new(vec![1f64, 1f64])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![1f64, 1f64])));
+        assert_eq!(plane.find_intersect(&a, &movement), Some(CartessianND::new(vec![1f64; 2])));
+        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![1f64; 2])));
 
         movement[0] = -0.5f64;
         assert_eq!(plane.find_intersect(&a, &movement), None);
@@ -2019,7 +2880,7 @@ mod test {
 
         let plane = SimplePlane::new(0, 1, Direction::Positive);
         // int 2D
-        let mut a = Cartessian2D::new([2; 2]);
+        let mut a : Cartessian<i32, 2> = Cartessian2D::new([2; 2]);
         assert_eq!(plane.check_inclusion(&a), true);
         assert_eq!(plane.normal_at(&a), None);
 
@@ -2309,6 +3170,45 @@ mod test {
     }
 
     #[test]
+    fn test_simple_plane_pair_periodic(){
+        // Float, fixed size
+        let planepair = SimplePlanePair::new(0, [0f64, 4f64]).unwrap();
+
+        let pos1 = Cartessian2D::new([-1f64, 2f64]);
+        assert_eq!(planepair.find_pair(&pos1), Cartessian2D::new([3f64, 2f64]));
+
+        let pos2 = Cartessian2D::new([4.5f64, 1f64]);
+        assert_eq!(planepair.find_pair(&pos2), Cartessian2D::new([0.5f64, 1f64]));
+
+        // Float, free size
+        let planepair = SimplePlanePair::new(0, [0f64, 4f64]).unwrap();
+
+        let pos1 = CartessianND::new(vec![-1f64, 2f64]);
+        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![3f64, 2f64]));
+
+        let pos2 = CartessianND::new(vec![4.5f64, 1f64]);
+        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![0.5f64, 1f64]));
+
+        // Integer, fixed size
+        let planepair = SimplePlanePair::new(0, [0i32, 4i32]).unwrap();
+
+        let pos1 = Cartessian2D::new([-1i32, 2i32]);
+        assert_eq!(planepair.find_pair(&pos1), Cartessian2D::new([4i32, 2i32]));
+
+        let pos2 = Cartessian2D::new([6i32, 1i32]);
+        assert_eq!(planepair.find_pair(&pos2), Cartessian2D::new([1i32, 1i32]));
+
+        // Integer, free size
+        let planepair = SimplePlanePair::new(0, [0i32, 4i32]).unwrap();
+
+        let pos1 = CartessianND::new(vec![-1i32, 2i32]);
+        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![4i32, 2i32]));
+
+        let pos2 = CartessianND::new(vec![6i32, 1i32]);
+        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![1i32, 1i32]));
+    }
+
+    #[test]
     #[should_panic]
     fn test_planepair_panic(){
         let planepair = SimplePlanePair::new(0, [1f64, 0f64]).unwrap();
@@ -2392,8 +3292,31 @@ mod test {
     }
 
     #[test]
+    fn test_plane_pair_periodic(){
+        // Float, fixed size
+        let normal = Cartessian2D::new([1f64, 0f64]);
+        let planepair = PlanePair::new(normal, [0f64, 4f64]).unwrap();
+
+        let pos1 = Cartessian2D::new([-1f64, 2f64]);
+        assert_eq!(planepair.find_pair(&pos1), Cartessian2D::new([3f64, 2f64]));
+
+        let pos2 = Cartessian2D::new([4.5f64, 1f64]);
+        assert_eq!(planepair.find_pair(&pos2), Cartessian2D::new([0.5f64, 1f64]));
+
+        // Float, free size
+        let normal = CartessianND::new(vec![1f64, 0f64]);
+        let planepair = PlanePair::new(normal, [0f64, 4f64]).unwrap();
+
+        let pos1 = CartessianND::new(vec![-1f64, 2f64]);
+        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![3f64, 2f64]));
+
+        let pos2 = CartessianND::new(vec![4.5f64, 1f64]);
+        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![0.5f64, 1f64]));
+    }
+
+    #[test]
     fn test_simplebox(){
-        let simplebox = SimpleBox::cube_with_center(&Cartessian3D::new([0; 3]), 3).unwrap();
+        let simplebox : SimpleBox<i32, 3> = SimpleBox::cube_with_center(&Cartessian3D::new([0; 3]), 3).unwrap();
         for plane in &simplebox.planes{
             match plane.idx{
                 0 => {
@@ -2492,6 +3415,105 @@ mod test {
     }
 
     #[test]
+    fn test_simplebox_periodic(){
+        // Float, Fixed size
+        let simplebox : SimpleBox<f64, 3>
+            = SimpleBox::cube_with_center(&Cartessian3D::new([0f64; 3]), 2.0).unwrap();
+
+        let mut pos = Cartessian3D::new([0f64; 3]);
+        let mut res = pos.clone();
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        pos[2] = -3f64; res[2] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        // Float, Free size
+        let simplebox : SimpleBox<f64, 3>
+            = SimpleBox::cube_with_center(&CartessianND::new(vec![0f64; 3]), 2.0).unwrap();
+
+        let mut pos = CartessianND::new(vec![0f64; 3]);
+        let mut res = pos.clone();
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        pos[2] = -3f64; res[2] = 1f64;
+        simplebox.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        // Int, Fixed size
+        let simplebox : SimpleBox<i32, 3>
+            = SimpleBox::cube_with_center(&Cartessian3D::new([0i32; 3]), 2).unwrap();
+
+        let mut pos = Cartessian3D::new([0i32; 3]);
+        let mut res = pos.clone();
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        pos[2] = -3i32; res[2] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        // Int, Free size
+        let simplebox : SimpleBox<i32, 3>
+            = SimpleBox::cube_with_center(&CartessianND::new(vec![0i32; 3]), 2).unwrap();
+
+        let mut pos = CartessianND::new(vec![0i32; 3]);
+        let mut res = pos.clone();
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        pos[2] = -3i32; res[2] = 2i32;
+        simplebox.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+    }
+
+    #[test]
     fn test_cube(){
         let cube = Cube::new(&Cartessian3D::new([0; 3]), 3);
         assert_eq!(&cube.center, &Cartessian3D::new([0; 3]));
@@ -2572,6 +3594,105 @@ mod test {
     }
 
     #[test]
+    fn test_cube_periodic(){
+        // Float, Fixed size
+        let cube : Cube<Cartessian3D<f64>>
+            = Cube::new(&Cartessian3D::new([0f64; 3]), 2.0);
+
+        let mut pos = Cartessian3D::new([0f64; 3]);
+        let mut res = pos.clone();
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        pos[2] = -3f64; res[2] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        // Float, Free size
+        let cube : Cube<CartessianND<f64>>
+            = Cube::new(&CartessianND::new(vec![0f64; 3]), 2.0);
+
+        let mut pos = CartessianND::new(vec![0f64; 3]);
+        let mut res = pos.clone();
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        pos[2] = -3f64; res[2] = 1f64;
+        cube.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        // Int, Fixed size
+        let cube : Cube<Cartessian3D<i32>>
+            = Cube::new(&Cartessian3D::new([0i32; 3]), 2);
+
+        let mut pos = Cartessian3D::new([0i32; 3]);
+        let mut res = pos.clone();
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        pos[2] = -3i32; res[2] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        // Int, Free size
+        let cube : Cube<CartessianND<i32>>
+            = Cube::new(&CartessianND::new(vec![0i32; 3]), 2);
+
+        let mut pos = CartessianND::new(vec![0i32; 3]);
+        let mut res = pos.clone();
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+
+        pos[0] = -3i32; res[0] = 2i32;
+        pos[1] = -3i32; res[1] = 2i32;
+        pos[2] = -3i32; res[2] = 2i32;
+        cube.find_pair_mut(&mut pos);
+        assert_eq!(&pos, &res);
+    }
+
+    #[test]
     fn test_parallelogram(){
         let vec1 = Cartessian2D::new([0f64, 1f64]);
         let mut vec2 = Cartessian2D::new([1f64, -1f64]);
@@ -2637,4 +3758,37 @@ mod test {
         assert_eq!(format!("{}", parallelogram.brief()), "(0:1,0,1),(0.7071067811865475:-0.7071067811865475,0,0.7071067811865475)");
         assert_eq!(format!("{:.3e}", parallelogram.brief()), "(0.000e0:1.000e0,0.000e0,1.000e0),(7.071e-1:-7.071e-1,0.000e0,7.071e-1)");
     }
+
+    #[test]
+    fn test_parallelogram_periodic(){
+        // Float, Fixed size
+        let parallelogram : Parallelogram<f64, 3>
+            = Parallelogram::new(
+                [PlanePair::new(Cartessian3D::new([1f64, 0f64, 0f64]), [-2f64, 2f64]).unwrap(),
+                PlanePair::new(Cartessian3D::new([0f64, 1f64, 0f64]), [-2f64, 2f64]).unwrap(),
+                PlanePair::new(Cartessian3D::new([0f64, 0f64, 1f64]), [-2f64, 2f64]).unwrap()]
+            ).unwrap();
+
+        let mut pos = Cartessian3D::new([0f64; 3]);
+        let mut res = pos.clone();
+        parallelogram.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        parallelogram.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        parallelogram.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+
+        pos[0] = -3f64; res[0] = 1f64;
+        pos[1] = -3f64; res[1] = 1f64;
+        pos[2] = -3f64; res[2] = 1f64;
+        parallelogram.find_pair_mut(&mut pos);
+        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+    }
 }
+
+
