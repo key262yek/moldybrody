@@ -5,90 +5,6 @@ use syn::{parse_macro_input, DeriveInput, Data, Fields, Ident, Type};
 use std::iter;
 
 
-
-#[proc_macro_derive(Mass)]
-pub fn derive_mass(item : TokenStream) -> TokenStream{
-    let x = parse_macro_input!(item as DeriveInput);
-
-    let struct_name = x.ident;
-    let (impl_generics, ty_generics, where_clause) = x.generics.split_for_impl();
-
-    let names = match x.data{
-        Data::Struct(ds) => {
-            match ds.fields{
-                Fields::Named(n) => {
-                    n.named
-                },
-                _ => {
-                    return err(Span::call_site(), "expected named fields, found unnamed or unit");
-                }
-            }
-        },
-        _ => {
-            return err(Span::call_site(), "expected struct, found enum or union");
-        },
-    };
-
-    let mass_ident = Ident::new("mass", proc_macro2::Span::call_site());
-    for f in names.iter(){
-        let ident = f.ident.clone().unwrap();
-        if ident == mass_ident{
-            let ty = f.ty.clone();
-            let tokens = quote!{
-                impl #impl_generics Mass<#ty> for #struct_name #ty_generics #where_clause {
-                    fn mass(&self) -> #ty{
-                        self.mass
-                    }
-                }
-            };
-            return tokens.into();
-        }
-    }
-    return err(Span::call_site(), "There is no fields of name 'mass' in struct");
-}
-
-#[proc_macro_derive(Charge)]
-pub fn derive_charge(item : TokenStream) -> TokenStream{
-    let x = parse_macro_input!(item as DeriveInput);
-
-    let struct_name = x.ident;
-    let (impl_generics, ty_generics, where_clause) = x.generics.split_for_impl();
-
-    let names = match x.data{
-        Data::Struct(ds) => {
-            match ds.fields{
-                Fields::Named(n) => {
-                    n.named
-                },
-                _ => {
-                    return err(Span::call_site(), "expected named fields, found unnamed or unit");
-                }
-            }
-        },
-        _ => {
-            return err(Span::call_site(), "expected struct, found enum or union");
-        },
-    };
-
-    let mass_ident = Ident::new("charge", proc_macro2::Span::call_site());
-    for f in names.iter(){
-        let ident = f.ident.clone().unwrap();
-        if ident == mass_ident{
-            let ty = f.ty.clone();
-            let tokens = quote!{
-                impl #impl_generics Charge<#ty> for #struct_name #ty_generics #where_clause {
-                    fn charge(&self) -> #ty{
-                        self.charge
-                    }
-                }
-            };
-            return tokens.into();
-        }
-    }
-    return err(Span::call_site(), "There is no fields of name 'charge' in struct");
-}
-
-
 #[proc_macro_derive(State)]
 pub fn derive_state(item : TokenStream) -> TokenStream{
     fn from_string(name : &str) -> Ident{
@@ -125,7 +41,6 @@ pub fn derive_state(item : TokenStream) -> TokenStream{
         if ident == from_string("mass"){
             let ty = f.ty.clone();
 
-
             token = quote!{
                 #token
 
@@ -138,13 +53,36 @@ pub fn derive_state(item : TokenStream) -> TokenStream{
         } else if ident == from_string("charge"){
             let ty = f.ty.clone();
 
-
             token = quote!{
                 #token
 
                 impl #impl_generics Charge<#ty> for #struct_name #ty_generics #where_clause {
                     fn charge(&self) -> #ty{
                         self.charge
+                    }
+                }
+            };
+        } else if ident == from_string("diff_const"){
+            let ty = f.ty.clone();
+
+            token = quote!{
+                #token
+
+                impl #impl_generics Diffusion<#ty> for #struct_name #ty_generics #where_clause {
+                    fn diff_const(&self) -> #ty{
+                        self.diff_const
+                    }
+                }
+            };
+        } else if ident == from_string("orientation"){
+            let ty = f.ty.clone();
+
+            token = quote!{
+                #token
+
+                impl #impl_generics Orientation<#ty> for #struct_name #ty_generics #where_clause {
+                    fn orientation(&self) -> #ty{
+                        self.orientation
                     }
                 }
             };
