@@ -3,6 +3,8 @@
 
 // use crate::boundary::BoundaryCondition;
 // use crate::boundary::AfterMove;
+use crate::vector::basic::Map;
+use std::fmt::Debug;
 use crate::boundary::Periodic;
 use crate::boundary::NonPeriodic;
 use crate::format_convert::{Brief, ConvertBrief};
@@ -1739,6 +1741,14 @@ impl<T, const N : usize> SimpleBox<T, N>{
         })
     }
 
+    pub fn from_pairs(consts : [[T; 2]; N]) -> Self
+        where T : PartialOrd + Copy + AbsDiffEq + Debug{
+        let planes : [SimplePlanePair<T>; N] = consts.iter().enumerate().map(|(idx, x)| SimplePlanePair::new(idx, *x).unwrap()).collect::<Vec<SimplePlanePair<T>>>().try_into().unwrap();
+        Self{
+            planes
+        }
+    }
+
     pub fn cube_with_center<'a, V>(center : &'a V, half : T) -> Result<Self, Error>
         where V : Vector<Item = T> + Dim<N>,
               &'a V : IntoIterator<Item = &'a T>,
@@ -2319,12 +2329,12 @@ macro_rules! impl_float_cube {
                     if p + m < c -self.radius{
                         let t = (c - self.radius - p) / m;
                         let mut result = pos.clone();
-                        result.zip_mut_with(&movement, |x, y| *x = *x + *y * t);
+                        result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
                     } else if p + m > c + self.radius{
                         let t = (c + self.radius - p) / m;
                         let mut result = pos.clone();
-                        result.zip_mut_with(&movement, |x, y| *x = *x + *y * t);
+                        result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
                     }
                 }
@@ -2338,12 +2348,12 @@ macro_rules! impl_float_cube {
                     if p + m < c -self.radius{
                         let t = (c - self.radius - p) / m;
                         let mut result = pos.clone();
-                        result.zip_mut_with(&movement, |x, y| *x = *x + *y * t);
+                        result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
                     } else if p + m > c + self.radius{
                         let t = (c + self.radius - p) / m;
                         let mut result = pos.clone();
-                        result.zip_mut_with(&movement, |x, y| *x = *x + *y * t);
+                        result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
                     }
                 }

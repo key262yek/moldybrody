@@ -1,5 +1,8 @@
 
 #![allow(unused_imports)]
+use crate::vector::basic::Map;
+use crate::boundary::PeriodicBoundaryCondition;
+use crate::boundary::Periodic;
 use crate::boundary::IntBoundary;
 use crate::state::HasVelocity;
 use crate::vector::CartessianND;
@@ -12,11 +15,11 @@ use crate::boundary::State;
 use crate::vector::Cartessian;
 
 use super::NonPeriodic;
-use super::{plane::{SimplePlane, Plane, SimplePlanePair, PlanePair, SimpleBox, Cube, Parallelogram}, BoundaryCondition, BCspecies, AfterMove, Boundary, FloatBoundary};
+use super::{plane::{SimplePlane, Plane, SimplePlanePair, PlanePair, SimpleBox, Cube, Parallelogram}, NonPeriodicBoundaryCondition, BCspecies, AfterMove, Boundary, FloatBoundary};
 
 macro_rules! impl_non_periodic_float_boundary_condition {
     ($ty : ident) => {
-        impl<B, const N : usize> BoundaryCondition<Cartessian<$ty, N>> for (B, BCspecies<$ty>)
+        impl<B, const N : usize> NonPeriodicBoundaryCondition<Cartessian<$ty, N>> for (B, BCspecies<$ty>)
             where B : NonPeriodic + FloatBoundary<Cartessian<$ty, N>>{
             fn check_bc<'a, S>(&self, state : &'a S, movement : &'a mut (Cartessian<$ty, N>, Cartessian<$ty, N>)) -> AfterMove
             where S : State<Movement = (Cartessian<$ty, N>, Cartessian<$ty, N>), Position = Cartessian<$ty, N>> + HasVelocity{
@@ -118,7 +121,7 @@ macro_rules! impl_non_periodic_float_boundary_condition {
             }
         }
 
-        impl<B> BoundaryCondition<CartessianND<$ty>> for (B, BCspecies<$ty>)
+        impl<B> NonPeriodicBoundaryCondition<CartessianND<$ty>> for (B, BCspecies<$ty>)
             where B : NonPeriodic + FloatBoundary<CartessianND<$ty>>{
             fn check_bc<'a, S>(&self, state : &'a S, movement : &'a mut (CartessianND<$ty>, CartessianND<$ty>)) -> AfterMove
             where S : State<Movement = (CartessianND<$ty>, CartessianND<$ty>), Position = CartessianND<$ty>> + HasVelocity{
@@ -225,18 +228,235 @@ macro_rules! impl_non_periodic_float_boundary_condition {
 impl_non_periodic_float_boundary_condition!(f32);
 impl_non_periodic_float_boundary_condition!(f64);
 
-// impl<B, const N : usize> BoundaryCondition<Cartessian<i32, N>> for (B, BCspecies<i32>)
-//             where B : NonPeriodic + IntBoundary<Cartessian<i32, N>>{
-//     fn check_bc<'a, S>(&self, state : &'a S, movement : &'a mut (Cartessian<i32, N>, Cartessian<i32, N>)) -> AfterMove
-//     where S : State<Movement = (Cartessian<i32, N>, Cartessian<i32, N>), Position = Cartessian<i32, N>> + HasVelocity {
+macro_rules! impl_periodic_float_boundary_condition {
+    ($ty : ident) => {
+        impl<B, const N : usize> PeriodicBoundaryCondition<Cartessian<$ty, N>> for (B, BCspecies<$ty>)
+            where B : Periodic<Cartessian<$ty,N>> + FloatBoundary<Cartessian<$ty, N>>{
+            fn check_bc<'a, S>(&self, state : &'a S, movement : &'a mut (Cartessian<$ty, N>, Cartessian<$ty, N>)) -> AfterMove
+            where S : State<Movement = (Cartessian<$ty, N>, Cartessian<$ty, N>), Position = Cartessian<$ty, N>> + HasVelocity{
+                if let Some(t) = self.0.ratio_to_intersect_unsafe(state.pos(), &movement.0){
+                    match &self.1{
+                        BCspecies::Absorbing => {
+                            return AfterMove::Dead;
+                        },
+                        BCspecies::PartiallyAbsorbing(p, rng) => {
+                            if get_uniform::<$ty>(&mut rng.borrow_mut()) < *p {
+                                return AfterMove::Dead;
+                            } else {
+                                let intersect = state.pos() + &movement.0 * t;
+                                let normal = self.0.normal_at_unsafe(&intersect);
 
-//     }
+                                let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                                movement.0 -= &normal * k;
 
-//     fn check_bc_overdamped<'a, S>(&self, state : &'a S, movement : &'a mut Cartessian<i32, N>) -> AfterMove
-//     where S : State<Movement = Cartessian<i32, N>, Position = Cartessian<i32, N>> {
+                                let v = (2.0 as $ty) * (&movement.1 + state.vel()).dot(&normal);
+                                movement.1 -= &normal * v;
+                                return AfterMove::Survived;
+                            }
+                        }
+                        BCspecies::Reflective => {
+                            let intersect = state.pos() + &movement.0 * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
 
-//     }
-// }
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                            movement.0 -= &normal * k;
+
+                            let v = (2.0 as $ty) * (&movement.1 + state.vel()).dot(&normal);
+                            movement.1 -= &normal * v;
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::InelasticReflection(e) => {
+                            let intersect = state.pos() + &movement.0 * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
+
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                            movement.0 -= &normal * k;
+
+                            let v = (1 as $ty + e) * (&movement.1 + state.vel()).dot(&normal);
+                            movement.1 -= &normal * v;
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::DiffusiveReflection => {
+                            unimplemented!();
+                        },
+                        BCspecies::Periodic => {
+                            let mut arrive = state.pos() + &movement.0;
+                            self.0.find_pair_mut(&mut arrive);
+                            arrive -= state.pos();
+                            movement.0.clone_from(&arrive);
+                            return AfterMove::Survived;
+                        },
+                    }
+                } else {
+                    return AfterMove::Survived;
+                }
+            }
+
+            fn check_bc_overdamped<'a, S>(&self, state : &'a S, movement : &'a mut Cartessian<$ty, N>) -> AfterMove
+            where S : State<Movement = Cartessian<$ty, N>, Position = Cartessian<$ty, N>> {
+                if let Some(t) = self.0.ratio_to_intersect_unsafe(state.pos(), movement){
+                    match &self.1{
+                        BCspecies::Absorbing => {
+                            return AfterMove::Dead;
+                        },
+                        BCspecies::PartiallyAbsorbing(p, rng) => {
+                            if get_uniform::<$ty>(&mut rng.borrow_mut()) < *p {
+                                return AfterMove::Dead;
+                            } else {
+                                let intersect = state.pos() + movement.clone() * t;
+                                let normal = self.0.normal_at_unsafe(&intersect);
+
+                                let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.dot(&normal));
+                                *movement -= &normal * k;
+                                return AfterMove::Survived;
+                            }
+                        }
+                        BCspecies::Reflective => {
+                            let intersect = state.pos() + movement.clone() * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
+
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.dot(&normal));
+                            *movement -= &normal * k;
+
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::InelasticReflection(_e) => {
+                            panic!("Feature is not provided : Inelastic Reflective boundary condition");
+                        },
+                        BCspecies::DiffusiveReflection => {
+                            unimplemented!();
+                        },
+                        BCspecies::Periodic => {
+                            let mut arrive = state.pos() + &*movement;
+                            self.0.find_pair_mut(&mut arrive);
+                            arrive -= state.pos();
+                            movement.clone_from(&arrive);
+                            return AfterMove::Survived;
+                        },
+                    }
+                } else {
+                    return AfterMove::Survived;
+                }
+            }
+        }
+
+        impl<B> PeriodicBoundaryCondition<CartessianND<$ty>> for (B, BCspecies<$ty>)
+            where B : Periodic<CartessianND<$ty>> + FloatBoundary<CartessianND<$ty>>{
+            fn check_bc<'a, S>(&self, state : &'a S, movement : &'a mut (CartessianND<$ty>, CartessianND<$ty>)) -> AfterMove
+            where S : State<Movement = (CartessianND<$ty>, CartessianND<$ty>), Position = CartessianND<$ty>> + HasVelocity{
+                if let Some(t) = self.0.ratio_to_intersect_unsafe(state.pos(), &movement.0){
+                    match &self.1{
+                        BCspecies::Absorbing => {
+                            return AfterMove::Dead;
+                        },
+                        BCspecies::PartiallyAbsorbing(p, rng) => {
+                            if get_uniform::<$ty>(&mut rng.borrow_mut()) < *p {
+                                return AfterMove::Dead;
+                            } else {
+                                let intersect = state.pos() + &movement.0 * t;
+                                let normal = self.0.normal_at_unsafe(&intersect);
+
+                                let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                                movement.0 -= &normal * k;
+
+                                let v = (2.0 as $ty) * (&movement.1 + state.vel()).dot(&normal);
+                                movement.1 -= &normal * v;
+                                return AfterMove::Survived;
+                            }
+                        }
+                        BCspecies::Reflective => {
+                            let intersect = state.pos() + &movement.0 * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
+
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                            movement.0 -= &normal * k;
+
+                            let v = (2.0 as $ty) * (&movement.1 + state.vel()).dot(&normal);
+                            movement.1 -= &normal * v;
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::InelasticReflection(e) => {
+                            let intersect = state.pos() + &movement.0 * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
+
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.0.dot(&normal));
+                            movement.0 -= &normal * k;
+
+                            let v = (1 as $ty + e) * (&movement.1 + state.vel()).dot(&normal);
+                            movement.1 -= &normal * v;
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::DiffusiveReflection => {
+                            unimplemented!();
+                        },
+                        BCspecies::Periodic => {
+                            let mut arrive = state.pos() + &movement.0;
+                            self.0.find_pair_mut(&mut arrive);
+                            arrive -= state.pos();
+                            movement.0.clone_from(&arrive);
+                            return AfterMove::Survived;
+                        },
+                    }
+                } else {
+                    return AfterMove::Survived;
+                }
+            }
+
+            fn check_bc_overdamped<'a, S>(&self, state : &'a S, movement : &'a mut CartessianND<$ty>) -> AfterMove
+            where S : State<Movement = CartessianND<$ty>, Position = CartessianND<$ty>> {
+                if let Some(t) = self.0.ratio_to_intersect_unsafe(state.pos(), movement){
+                    match &self.1{
+                        BCspecies::Absorbing => {
+                            return AfterMove::Dead;
+                        },
+                        BCspecies::PartiallyAbsorbing(p, rng) => {
+                            if get_uniform::<$ty>(&mut rng.borrow_mut()) < *p {
+                                return AfterMove::Dead;
+                            } else {
+                                let intersect = state.pos() + movement.clone() * t;
+                                let normal = self.0.normal_at_unsafe(&intersect);
+
+                                let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.dot(&normal));
+                                *movement -= &normal * k;
+                                return AfterMove::Survived;
+                            }
+                        }
+                        BCspecies::Reflective => {
+                            let intersect = state.pos() + movement.clone() * t;
+                            let normal = self.0.normal_at_unsafe(&intersect);
+
+                            let k =  (2.0 as $ty) * (1.0 as $ty - t) * (movement.dot(&normal));
+                            *movement -= &normal * k;
+
+                            return AfterMove::Survived;
+                        },
+                        BCspecies::InelasticReflection(_e) => {
+                            panic!("Feature is not provided : Inelastic Reflective boundary condition");
+                        },
+                        BCspecies::DiffusiveReflection => {
+                            unimplemented!();
+                        },
+                        BCspecies::Periodic => {
+                            let mut arrive = state.pos() + &*movement;
+                            self.0.find_pair_mut(&mut arrive);
+                            arrive -= state.pos();
+                            movement.clone_from(&arrive);
+                            return AfterMove::Survived;
+                        },
+                    }
+                } else {
+                    return AfterMove::Survived;
+                }
+            }
+        }
+    };
+}
+
+impl_periodic_float_boundary_condition!(f32);
+impl_periodic_float_boundary_condition!(f64);
+
+
+
 
 #[cfg(test)]
 mod test {
@@ -362,6 +582,38 @@ mod test {
 
         let mut movement = original.clone();
         assert_eq!((plane.clone(), BCspecies::Reflective).check_bc_overdamped(&state, &mut movement), AfterMove::Survived);
+        dx[1] = 0f64;
+        assert_abs_diff_eq!(&movement, &dx, epsilon=1e-3);
+    }
+
+    #[test]
+    fn test_bc_periodic(){
+        #[derive(State)]
+        struct TestState{
+            mass : f64,
+            pos : Cartessian2D<f64>,
+        }
+
+        let state = TestState{
+            mass : 1f64,
+            pos : Cartessian2D::new([1f64, 1f64]),
+        };
+
+        let planepair = SimplePlanePair::new(1, [0f64, 2f64]).unwrap();
+
+        let mut dx = Cartessian2D::new([1f64, -2f64]);
+        let original = dx.clone();
+
+        let mut movement = original.clone();
+        assert_eq!((planepair.clone(), BCspecies::Absorbing).check_bc_overdamped(&state, &mut movement), AfterMove::Dead);
+
+        let mut movement = original.clone();
+        assert_eq!((planepair.clone(), BCspecies::Reflective).check_bc_overdamped(&state, &mut movement), AfterMove::Survived);
+        dx[1] = 0f64;
+        assert_abs_diff_eq!(&movement, &dx, epsilon=1e-3);
+
+        let mut movement = original.clone();
+        assert_eq!((planepair.clone(), BCspecies::Periodic).check_bc_overdamped(&state, &mut movement), AfterMove::Survived);
         dx[1] = 0f64;
         assert_abs_diff_eq!(&movement, &dx, epsilon=1e-3);
     }

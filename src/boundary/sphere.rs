@@ -1,11 +1,13 @@
 
 
+use crate::boundary::Periodic;
+use crate::vector::basic::Map;
 use std::ops::Neg;
 use approx::AbsDiffEq;
 use crate::vector::arithmetic::Scalar;
 use crate::vector::product::{Norm, InnerProduct};
 use crate::vector::{Vector, Cartessian, CartessianND};
-use super::Boundary;
+use super::{Boundary, NonPeriodic};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Sphere<V : Vector>{
@@ -23,6 +25,7 @@ impl<V : Vector> Sphere<V>
         }
     }
 }
+
 
 macro_rules! impl_float_sphere {
     ($ty : ident) => {
@@ -70,6 +73,25 @@ macro_rules! impl_float_sphere {
                 let (x2, dx2, xdx, r) = (from_center.norm_l2_sqr(), movement.norm_l2_sqr(), from_center.inner_product(movement), self.radius);
                 let t = (- xdx + (xdx * xdx + dx2 * (r * r - x2)).sqrt()) / dx2;
                 return Some(pos + movement * t);
+            }
+        }
+
+        impl<const N : usize> Periodic<Cartessian<$ty, N>> for Sphere<Cartessian<$ty, N>>{
+            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N>{
+                let r = pos.norm_l2();
+                if r > self.radius{
+                    return ((r - 2 as $ty * self.radius) / r) * pos;
+                } else {
+                    return pos.clone();
+                }
+            }
+
+            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>){
+                let r = pos.norm_l2();
+                if r > self.radius{
+                    let c = (r - 2 as $ty * self.radius) / r;
+                    pos.map_inplace(|x| *x = *x * c);
+                }
             }
         }
 
@@ -123,6 +145,25 @@ macro_rules! impl_float_sphere {
                 return Some(result);
             }
         }
+
+        impl Periodic<CartessianND<$ty>> for Sphere<CartessianND<$ty>>{
+            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty>{
+                let r = pos.norm_l2();
+                if r > self.radius{
+                    return ((r - 2 as $ty * self.radius) / r) * pos;
+                } else {
+                    return pos.clone();
+                }
+            }
+
+            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>){
+                let r = pos.norm_l2();
+                if r > self.radius{
+                    let c = (r - 2 as $ty * self.radius) / r;
+                    pos.map_inplace(|x| *x = *x * c);
+                }
+            }
+        }
     };
 }
 
@@ -148,6 +189,8 @@ impl<V : Vector> TaxiSphere<V>
         }
     }
 }
+
+impl<V : Vector> NonPeriodic for TaxiSphere<V> {}
 
 impl<T, const N : usize> Boundary<Cartessian<T, N>> for TaxiSphere<Cartessian<T, N>>
     where   T : Scalar + AbsDiffEq + PartialOrd + Neg<Output = T>,
@@ -498,6 +541,24 @@ mod test {
     }
 
     #[test]
+    fn test_periodic_sphere2d(){
+        let range = Sphere::new(&Cartessian2D::new([0f64, 0f64]), 1f64);
+
+        let mut pos = Cartessian2D::new([0f64, 0.9]);
+        let mut res = pos.clone();
+        assert_abs_diff_eq!(range.find_pair(&pos), &res, epsilon=1e-3);
+
+        pos[1] = 1.1; res[1] = -0.9;
+        assert_abs_diff_eq!(range.find_pair(&pos), &res, epsilon=1e-3);
+
+        pos[0] = 1.0; pos[1] = 1.0;
+
+        let sqrt2 = 2f64.sqrt();
+        res[0] = 1.0 - sqrt2; res[1] = 1.0 - sqrt2;
+        assert_abs_diff_eq!(range.find_pair(&pos), &res, epsilon=1e-3);
+    }
+
+    #[test]
     fn test_sphere3d(){
         let range = Sphere::new(&Cartessian3D::new([0f64; 3]), 1f64);
 
@@ -573,6 +634,8 @@ mod test {
         assert_abs_diff_eq!(range.find_intersect(&a, &movement).unwrap(), b.clone());
         assert_abs_diff_eq!(range.find_intersect_unsafe(&a, &movement).unwrap(), b.clone());
     }
+
+
 
     #[test]
     fn test_taxisphere1d(){
@@ -741,6 +804,7 @@ mod test {
         assert_abs_diff_eq!(range.find_intersect(&a, &movement).unwrap(), b.clone());
         assert_abs_diff_eq!(range.find_intersect_unsafe(&a, &movement).unwrap(), b.clone());
     }
+
 
     #[test]
     fn test_taxisphere3d(){
