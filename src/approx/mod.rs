@@ -6,18 +6,67 @@
 // use crate::prelude::*;
 
 use crate::error::Error;
+// use crate::force::Bimolecular;
+// use crate::force::Global;
 use crate::state::State;
+use crate::vector::arithmetic::Scalar;
 use crate::vector::Vector;
+// use std::ops::{Index, IndexMut};
 
 /// Approximation method
 ///
 /// System에 따라 정해지는 State와 Force, Time Iterator를 인자로 해서 State를 renewal하는 approximation method를 지칭합니다.
 /// 같은 시스템에서도 approximation order에 따라 그 형태가 달라질 수 있습니다.
-pub trait ApproxNewton<'a> : State{
-    /// Renew state by using approximation
-    fn approx(&'a self, force : &'a <Self as State>::Position, dt : <<Self as State>::Position as Vector>::Item) -> <Self as State>::Movement;
+pub trait ApproxNewton<'a, P, T>: State<Movement = (P, P), Position = P>
+where
+    P: Vector<Item = T>,
+    T: Scalar,
+{
+    /// Approximation by euler method
+    fn euler(&'a self, force: &'a P, dt: T) -> (P, P);
+
+    /// Approximation for constant speed particle
+    fn const_speed(&'a self, dt: T) -> (P, P);
 }
 
+// pub trait ApproxNewtonList<'a, S, P, T>:
+
+// where
+//     S: 'a + State<Movement = (P, P), Position = P> + ApproxNewton<'a, P, T>,
+//     P: Vector<Item = T>,
+//     T: Scalar,
+// {
+//     fn euler<F, M, G, B>(
+//         &'a mut self,
+//         forces: &'a F,
+//         movements: &'a mut M,
+//         dt: T,
+//         global: Option<G>,
+//         bimole: Option<B>,
+//     ) where
+//         F: Index<usize, Output = P>,
+//         M: IndexMut<usize, Output = (P, P)>,
+//         G: Global<'a, S, Force = P, Potential = T>,
+//         B: Bimolecular<'a, S, Force = P, Potential = T>;
+
+//     fn const_speed(&'a mut self, dt: T) {
+//         for state in self.into_iter() {
+//             let movement = state.const_speed(dt);
+//             state.renew_state(&movement);
+//         }
+//     }
+// }
+
+pub trait ApproxOverdampedLangevin<'a, P, T>: State<Movement = P, Position = P>
+where
+    P: Vector<Item = T>,
+    T: Scalar,
+{
+    /// Pure diffusion
+    fn euler_pure_diffusion(&'a self, random_force: &'a P, dt: T) -> P;
+
+    fn euler_with_drift(&'a self, force: &'a P, random_force: &'a P, dt: T) -> P;
+}
 
 /// Trait for iterate time of system
 ///
@@ -27,7 +76,9 @@ pub trait ApproxNewton<'a> : State{
 /// 또 입자들이 Run and Tumble하는 경우에는, 다음 tumble까지 직진운동할 것이기 때문에 직진운동 사이에서는 시간을 크게 뛸 수 있습니다.
 /// 이런 여러 성격의 iterator를 모두 어우르기 위해 trait으로 선언했습니다.
 pub trait TimeIterator<T>
-    where Self : Sized{
+where
+    Self: Sized,
+{
     /// Return a current time restore in timeiterator
     ///
     /// Iterator에 저장되어 있는 현재 시간을 출력하는 함수입니다.
@@ -71,7 +122,7 @@ pub trait TimeIterator<T>
     /// const_step.set_tmax(10f64);
     /// assert_eq!(const_step.tmax, 10f64);
     /// ```
-    fn set_tmax(&mut self, tmax : T) -> Result<(), Error>;
+    fn set_tmax(&mut self, tmax: T) -> Result<(), Error>;
 
     /// Return iterator of both a current time and time step simultaneously
     ///
@@ -121,22 +172,22 @@ pub trait TimeIterator<T>
 /// }
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub struct TimeDiffIterator<T>{
-    pub timeiter : T,
+pub struct TimeDiffIterator<T> {
+    pub timeiter: T,
 }
 
-impl<T : Iterator + TimeIterator<f64>> Iterator for TimeDiffIterator<T>{
+impl<T: Iterator + TimeIterator<f64>> Iterator for TimeDiffIterator<T> {
     type Item = (T::Item, f64);
 
-    fn next(&mut self) -> Option<Self::Item>{
-        match self.timeiter.next(){
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.timeiter.next() {
             Some(time) => Some((time, self.timeiter.dt())),
             None => None,
         }
     }
 }
 
-
-pub mod time;
+pub mod langevin;
 pub mod newton;
+pub mod time;
 // pub mod brownian_dynamics;

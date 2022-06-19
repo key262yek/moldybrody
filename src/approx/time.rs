@@ -64,6 +64,11 @@ impl ConstStep{
             tmax    : std::f64::MAX,
         })
     }
+
+    #[allow(dead_code)]
+    pub fn renew(&mut self){
+        self.current = 0f64;
+    }
 }
 
 impl TimeIterator<f64> for ConstStep{
@@ -218,6 +223,13 @@ impl ExponentialStep{
             inc     : inc,
             count   : 0,
         })
+    }
+
+    #[allow(dead_code)]
+    pub fn renew(&mut self){
+        self.current = 0f64;
+        self.dt = self.dt_min;
+        self.count = 0;
     }
 
     #[allow(dead_code)]

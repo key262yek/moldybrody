@@ -1,26 +1,44 @@
-
+use crate::approx::ApproxNewton;
+use crate::prelude::Mul;
+use crate::vector::basic::Zeros;
+use std::ops::Add;
 use std::ops::AddAssign;
 use std::ops::MulAssign;
-use std::ops::Add;
-use crate::prelude::Mul;
-use crate::vector::arithmetic::Scalar;
-use crate::state::Mass;
-use crate::approx::Vector;
+
 use crate::approx::State;
+use crate::approx::Vector;
 use crate::state::HasVelocity;
-use super::ApproxNewton;
+use crate::state::Mass;
 
+macro_rules! impl_newton_float {
+    ($ty : ident) => {
+        impl<'a, S, P> ApproxNewton<'a, P, $ty> for S
+        where
+            S: State<Movement = (P, P), Position = P> + HasVelocity + Mass<$ty>,
+            P: Vector<Item = $ty>
+                + Add<Output = P>
+                + Clone
+                + AddAssign<&'a P>
+                + AddAssign<P>
+                + MulAssign<$ty>
+                + Zeros
+                + 'a,
+            &'a P: Mul<$ty, Output = P>,
+        {
+            fn euler(&'a self, force: &'a P, dt: $ty) -> (P, P) {
+                let dv = force * (dt / self.mass());
+                let dx = self.vel() * dt;
+                return (dx, dv);
+            }
 
-
-impl<'a, S, P, T> ApproxNewton<'a> for S
-    where S : State<Movement = (P, P), Position = P> + HasVelocity + Mass<T>,
-          P : Vector<Item = T> + Add<Output = P> + Clone + AddAssign<&'a P> + AddAssign<P>+ MulAssign<T>  + 'a,
-          &'a P : Mul<T, Output = P> ,
-          T : Scalar{
-
-    fn approx(&'a self, force : &'a P, dt : T) -> (P, P){
-        let dv = force * (dt / self.mass());
-        let dx = self.vel() * dt + force * (dt * dt / (self.mass() + self.mass()));
-        return (dx, dv);
-    }
+            fn const_speed(&'a self, dt: $ty) -> (P, P) {
+                let dx = self.vel() * dt;
+                let dv = P::zero_with_length(self.vel().dim());
+                return (dx, dv);
+            }
+        }
+    };
 }
+
+impl_newton_float!(f32);
+impl_newton_float!(f64);
