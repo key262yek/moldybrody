@@ -2,6 +2,7 @@
 
 // use std::convert::TryInto;
 // use std::fmt::Debug;
+use num_traits::Zero;
 use crate::vector::{Cartessian, CartessianND};
 
 use std::{
@@ -10,6 +11,21 @@ use std::{
     hash::{Hash, Hasher},
     borrow::{Borrow, BorrowMut},
 };
+
+pub trait Zeros{
+    fn zero_with_length(n : usize) -> Self;
+}
+
+pub trait Map{
+    type Item : Clone;
+
+    fn map_inplace<'a, F>(&'a mut self, f : F)
+        where F : FnMut(&'a mut Self::Item);
+
+    fn zip_mut_with<F, U>(&mut self, rhs : U, f : F)
+    where F : FnMut(&mut Self::Item, <U as IntoIterator>::Item),
+          U : IntoIterator;
+}
 
 impl<T, const N : usize> Cartessian<T, N>{
     /// Return a reference to the element of coordinate at index, or return None if the index is out of bounds.
@@ -41,16 +57,16 @@ impl<T, const N : usize> Cartessian<T, N>{
         return Some(&mut self.coord[index])
     }
 
-    /// Call f by reference on each element and create a new vector with the new values.
-    /// Return an array with the same shape as self.
-    ///
-    /// ```
-    /// # use moldybrody::vector::Cartessian;
-    /// let a : Cartessian<f64, 2> = Cartessian::new([2.0, 0.0]);
-    /// assert!(
-    ///     a.map(|x| *x as i32) == Cartessian::<i32, 2>::new([2, 0])
-    /// )
-    /// ```
+    // Call f by reference on each element and create a new vector with the new values.
+    // Return an array with the same shape as self.
+    //
+    // ```
+    // # use moldybrody::vector::Cartessian;
+    // let a : Cartessian<f64, 2> = Cartessian::new([2.0, 0.0]);
+    // assert!(
+    //     a.map(|x| *x as i32) == Cartessian::<i32, 2>::new([2, 0])
+    // )
+    // ```
     // pub fn map<'a, B, F>(&'a self, mut f : F) -> Cartessian<B, N>
     //     where F : FnMut(&'a T) -> B,
     //           T : Clone,
@@ -63,18 +79,34 @@ impl<T, const N : usize> Cartessian<T, N>{
     //     Cartessian::<B, N>::from_iter_unchecked(self.into_iter().map(|x| f(x)))
     // }
 
-    /// Modify the array in place by calling f by mutable reference on each element.
-    pub fn map_inplace<'a, F>(&'a mut self, f : F)
-        where F : FnMut(&'a mut T){
+    // Modify the array in place by calling f by mutable reference on each element.
+    // pub fn map_inplace<'a, F>(&'a mut self, f : F)
+    //     where F : FnMut(&'a mut T){
 
+    //     self.iter_mut().for_each(f)
+    // }
+
+    // /// calling the closure f on each element pair.
+    // pub fn zip_mut_with<F>(&mut self, rhs : &Self, mut f : F)
+    //     where T : Clone,
+    //           F : FnMut(&mut T, &T){
+
+    //     self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
+    // }
+}
+
+impl<T, const N : usize> Map for Cartessian<T, N>
+    where T : Clone{
+    type Item = T;
+
+    fn map_inplace<'a, F>(&'a mut self, f : F)
+        where F : FnMut(&'a mut T) {
         self.iter_mut().for_each(f)
     }
 
-    /// calling the closure f on each element pair.
-    pub fn zip_mut_with<F>(&mut self, rhs : &Self, mut f : F)
-        where T : Clone,
-              F : FnMut(&mut T, &T){
-
+    fn zip_mut_with<F, U>(&mut self, rhs : U, mut f : F)
+        where F : FnMut(&mut T, <U as IntoIterator>::Item),
+            U : IntoIterator {
         self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
     }
 }
@@ -109,6 +141,18 @@ impl<T, const N : usize> Default for Cartessian<T, N>
     fn default() -> Self{
         Self{
             coord : [T::default(); N],
+        }
+    }
+}
+
+impl<T, const N : usize> Zeros for Cartessian<T, N>
+    where T : Zero + Copy{
+    fn zero_with_length(n : usize) -> Self {
+        if n != N{
+            panic!("Invalid Argument : Cartessian<T, {}> cannot be defined with length {}", N, n);
+        }
+        Self{
+            coord : [T::zero(); N],
         }
     }
 }
@@ -200,16 +244,16 @@ impl<T> CartessianND<T>{
         return Some(&mut self.coord[index])
     }
 
-    /// Call f by reference on each element and create a new vector with the new values.
-    /// Return an array with the same shape as self.
-    ///
-    /// ```
-    /// # use moldybrody::vector::CartessianND;
-    /// let a : CartessianND<f64> = CartessianND::new(vec![2.0, 0.0]);
-    /// assert!(
-    ///     a.map(|x| *x as i32) == CartessianND::<i32>::new(vec![2, 0])
-    /// )
-    /// ```
+    // Call f by reference on each element and create a new vector with the new values.
+    // Return an array with the same shape as self.
+    //
+    // ```
+    // # use moldybrody::vector::CartessianND;
+    // let a : CartessianND<f64> = CartessianND::new(vec![2.0, 0.0]);
+    // assert!(
+    //     a.map(|x| *x as i32) == CartessianND::<i32>::new(vec![2, 0])
+    // )
+    // ```
     // pub fn map<'a, B, F>(&'a self, mut f : F) -> CartessianND<B>
     //     where F : FnMut(&'a T) -> B,
     //           B : Debug + Clone{
@@ -217,18 +261,34 @@ impl<T> CartessianND<T>{
     //     CartessianND::<B>::from_iter(self.into_iter().map(|x| f(x)))
     // }
 
-    /// Modify the array in place by calling f by mutable reference on each element.
-    pub fn map_inplace<'a, F>(&'a mut self, f : F)
-        where F : FnMut(&'a mut T){
+    // Modify the array in place by calling f by mutable reference on each element.
+    // pub fn map_inplace<'a, F>(&'a mut self, f : F)
+    //     where F : FnMut(&'a mut T){
 
+    //     self.iter_mut().for_each(f)
+    // }
+
+    // /// calling the closure f on each element pair.
+    // pub fn zip_mut_with<F>(&mut self, rhs : &Self, mut f : F)
+    //     where T : Clone,
+    //           F : FnMut(&mut T, &T){
+
+    //     self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
+    // }
+}
+
+impl<T> Map for CartessianND<T>
+    where T : Clone{
+    type Item = T;
+
+    fn map_inplace<'a, F>(&'a mut self, f : F)
+        where F : FnMut(&'a mut T) {
         self.iter_mut().for_each(f)
     }
 
-    /// calling the closure f on each element pair.
-    pub fn zip_mut_with<F>(&mut self, rhs : &Self, mut f : F)
-        where T : Clone,
-              F : FnMut(&mut T, &T){
-
+    fn zip_mut_with<F, U>(&mut self, rhs : U, mut f : F)
+        where F : FnMut(&mut T, <U as IntoIterator>::Item),
+        U : IntoIterator {
         self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
     }
 }
@@ -312,10 +372,17 @@ impl<'a, T> IntoIterator for &'a mut CartessianND<T>{
     }
 }
 
+impl<T> Zeros for CartessianND<T>
+    where T : Zero + Copy{
+    fn zero_with_length(n : usize) -> Self {
+        CartessianND::<T>::new(vec![T::zero(); n])
+    }
+}
 
 #[cfg(test)]
 mod test {
-    use crate::vector::{CartessianND, Cartessian2D};
+    use crate::vector::basic::Map;
+use crate::vector::{CartessianND, Cartessian2D};
 
     #[test]
     fn test_basic(){

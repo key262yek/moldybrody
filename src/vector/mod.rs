@@ -31,6 +31,15 @@ pub trait Vector{
     fn dim(&self) -> usize;
 }
 
+impl<T, const N : usize> Vector for [T; N]
+    where T : Copy + Debug + PartialEq{
+    type Item = T;
+
+    fn dim(&self) -> usize {
+        N
+    }
+}
+
 pub trait Dim<const N : usize> {}
 impl<T, const N : usize> Dim<N> for Cartessian<T, N> {}
 impl<T> Dim<0> for CartessianND<T> {}

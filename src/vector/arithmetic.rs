@@ -1,4 +1,5 @@
 
+use crate::vector::basic::Map;
 use std::iter::Sum;
 use num_traits::{One, Zero};
 use std::ops::{Add, Sub, Mul, Div, Neg, AddAssign, SubAssign, MulAssign, DivAssign};

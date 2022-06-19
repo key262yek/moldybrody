@@ -27,7 +27,6 @@ impl<'a, T : Scalar, const N : usize> Dot<&'a Cartessian<T, N>> for Cartessian<T
     }
 }
 
-
 impl<T : Scalar> Dot<CartessianND<T>> for CartessianND<T>{
     type Output = T;
 
@@ -77,6 +76,7 @@ macro_rules! impl_inner_product_real {
         }
 
 
+
         impl InnerProduct<CartessianND<$ty>> for CartessianND<$ty>{
             type Output = $ty;
 
@@ -98,7 +98,6 @@ macro_rules! impl_inner_product_real {
                 self.into_iter().zip(rhs).map(|(x, y)| *x * *y).sum()
             }
         }
-
     };
 }
 
@@ -157,7 +156,6 @@ macro_rules! impl_inner_product_complex {
                 self.into_iter().zip(rhs).map(|(x, y)| x.conj() * *y).sum()
             }
         }
-
     };
 }
 
