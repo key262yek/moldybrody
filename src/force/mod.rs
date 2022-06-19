@@ -8,44 +8,64 @@
 //! Force, Potential trait을 정의해두어 훗날 변수들을 구분하기 위해 사용할 것이며,
 //! GlobalPotential, BimolecularInteraction, RandomForce trait을 정의하여 각각의 경우에 필요로 하는 함수들을 정의하였습니다.
 
-use crate::vector::Vector;
 use crate::state::State;
+use crate::vector::Vector;
+use rand_pcg::Pcg64;
 
+pub enum ForceSpecies<'a, S: State, F: Vector, P> {
+    GlobalPotential(Box<dyn Global<'a, S, Force = F, Potential = P>>),
+    BimolecularPotential(Box<dyn Bimolecular<'a, S, Force = F, Potential = P>>),
+    RandomForce(Box<dyn RandomForce<'a, S, Force = F>>),
+    Various(Box<Vec<ForceSpecies<'a, S, F, P>>>),
+}
 
 /// Global potential, Single particle interaction
-pub trait Global<'a, S : State>{
-    type Force : Vector;
+pub trait Global<'a, S: State> {
+    type Force: Vector;
     type Potential;
 
     /// return value of potential at certain state
-    fn potential(&'a self, state : &'a S) -> Self::Potential;
+    fn potential(&'a self, state: &'a S) -> Self::Potential;
 
-    fn force(&'a self, state : &'a S) -> Self::Force;
+    fn force(&'a self, state: &'a S) -> Self::Force;
 
     /// change value of force to force vector of given state
-    fn force_to(&'a self, state : &'a S, force : &'a mut Self::Force);
+    fn force_to(&'a self, state: &'a S, force: &'a mut Self::Force);
+
+    /// Add force to given vector
+    fn force_add_to(&'a self, state: &'a S, force: &'a mut Self::Force);
 }
 
 /// Trait indicates bimolecular interaction
-pub trait Bimolecular<'a, S : State>{
-    type Force : Vector;
+pub trait Bimolecular<'a, S: State> {
+    type Force: Vector;
     type Potential;
 
     /// return value of potential at certain state
-    fn potential(&self, state : &'a S, other : &'a S) -> Self::Potential;
+    fn potential(&self, state: &'a S, other: &'a S) -> Self::Potential;
 
-    fn force(&self, state : &'a S, other : &'a S) -> Self::Force;
+    fn force(&self, state: &'a S, other: &'a S) -> Self::Force;
 
     /// change value of force to force vector of given state
-    fn force_to(&self, state : &'a S, other : &'a S, force : &'a mut Self::Force);
+    fn force_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
+
+    /// Add force to given vector
+    fn force_add_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
 }
 
-// /// Trait indicates random force
-// pub trait RandomForce<P : Point>{
-//     /// change value of force to random force vector of given state
-//     fn force_to(&self, rng : &mut Pcg64, force : &mut P);
-// }
+/// Trait indicates random force
+pub trait RandomForce<'a, S: State> {
+    type Force: Vector;
 
-pub mod global;
+    fn force(&self, rng: &mut Pcg64) -> Self::Force;
+
+    /// change value of force to random force vector of given state
+    fn force_to(&self, rng: &mut Pcg64, force: &mut Self::Force);
+
+    /// Add force to given vector
+    fn force_add_to(&self, rng: &mut Pcg64, force: &mut Self::Force);
+}
+
 pub mod bimolecular;
-// pub mod random;
+pub mod global;
+pub mod random;
