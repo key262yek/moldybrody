@@ -1,9 +1,16 @@
 // use rayon::prelude::IntoParallelIterator;
-use super::PairIterator;
 use std::collections::VecDeque;
 
 use std::ops::Index;
 use std::ops::Range;
+
+pub trait PairIterator<'a, T: 'a>: Sized {
+    type IntoIter: Iterator<Item = (&'a T, &'a T)>;
+    type IntoEnum: Iterator<Item = ((usize, &'a T), (usize, &'a T))>;
+
+    fn pair_iter(&'a self) -> Self::IntoIter;
+    fn pair_enumerate(&'a self) -> Self::IntoEnum;
+}
 
 #[derive(Clone)]
 pub struct PairIdx {
@@ -286,7 +293,6 @@ impl<'a, T: 'a> PairIterator<'a, T> for VecDeque<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rayon::prelude::*;
 
     #[test]
     fn test_pair() {
@@ -323,16 +329,16 @@ mod test {
         assert_eq!(iter.next(), None);
     }
 
-    #[test]
-    fn test_pair_par() {
-        let array = [3, 4, 5, 6];
-        let mut items: Vec<(&i32, &i32)> = array.pair_iter().par_bridge().collect();
-        items.par_sort();
-        assert_eq!(
-            items,
-            vec![(&3, &4), (&3, &5), (&3, &6), (&4, &5), (&4, &6), (&5, &6)]
-        );
-    }
+    // #[test]
+    // fn test_pair_par() {
+    //     let array = [3, 4, 5, 6];
+    //     let mut items: Vec<(&i32, &i32)> = array.pair_iter().par_bridge().collect();
+    //     items.par_sort();
+    //     assert_eq!(
+    //         items,
+    //         vec![(&3, &4), (&3, &5), (&3, &6), (&4, &5), (&4, &6), (&5, &6)]
+    //     );
+    // }
 
     #[test]
     fn test_exact_size() {
