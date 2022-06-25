@@ -22,12 +22,13 @@ macro_rules! impl_newton_float {
                 + AddAssign<P>
                 + MulAssign<$ty>
                 + Zeros
+                + Mul<$ty, Output = P>
                 + 'a,
-            &'a P: Mul<$ty, Output = P>,
+            &'a P: Mul<$ty, Output = P> + Add<P, Output = P>,
         {
             fn euler(&'a self, force: &'a P, dt: $ty) -> (P, P) {
                 let dv = force * (dt / self.mass());
-                let dx = self.vel() * dt;
+                let dx = (self.vel() + dv.clone() * 0.5 as $ty) * dt;
                 return (dx, dv);
             }
 
