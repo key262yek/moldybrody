@@ -1,33 +1,34 @@
-
-
 // use std::convert::TryInto;
 // use std::fmt::Debug;
-use num_traits::Zero;
+
 use crate::vector::{Cartessian, CartessianND};
+use num_traits::Zero;
 
 use std::{
-    slice::{Iter, IterMut},
-    ops::{Index, IndexMut, FnMut},
-    hash::{Hash, Hasher},
     borrow::{Borrow, BorrowMut},
+    hash::{Hash, Hasher},
+    ops::{FnMut, Index, IndexMut},
+    slice::{Iter, IterMut},
 };
 
-pub trait Zeros{
-    fn zero_with_length(n : usize) -> Self;
+pub trait Zeros {
+    fn zero_with_length(n: usize) -> Self;
 }
 
-pub trait Map{
-    type Item : Clone;
+pub trait Map {
+    type Item: Clone;
 
-    fn map_inplace<'a, F>(&'a mut self, f : F)
-        where F : FnMut(&'a mut Self::Item);
+    fn map_inplace<'a, F>(&'a mut self, f: F)
+    where
+        F: FnMut(&'a mut Self::Item);
 
-    fn zip_mut_with<F, U>(&mut self, rhs : U, f : F)
-    where F : FnMut(&mut Self::Item, <U as IntoIterator>::Item),
-          U : IntoIterator;
+    fn zip_mut_with<F, U>(&mut self, rhs: U, f: F)
+    where
+        F: FnMut(&mut Self::Item, <U as IntoIterator>::Item),
+        U: IntoIterator;
 }
 
-impl<T, const N : usize> Cartessian<T, N>{
+impl<T, const N: usize> Cartessian<T, N> {
     /// Return a reference to the element of coordinate at index, or return None if the index is out of bounds.
     /// Arrays also support indexing syntax: array[index].
     ///
@@ -42,19 +43,19 @@ impl<T, const N : usize> Cartessian<T, N>{
     ///     a[2] == 4.0
     /// )
     /// ```
-    pub fn get(&self, index : usize) -> Option<&T>{
+    pub fn get(&self, index: usize) -> Option<&T> {
         if index >= N {
             return None;
         }
-        return Some(&self.coord[index])
+        return Some(&self.coord[index]);
     }
 
     /// Return a mutable reference to the element at index, or return None if the index is out of bounds.
-    pub fn get_mut(&mut self, index : usize) -> Option<&mut T>{
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index >= N {
             return None;
         }
-        return Some(&mut self.coord[index])
+        return Some(&mut self.coord[index]);
     }
 
     // Call f by reference on each element and create a new vector with the new values.
@@ -95,126 +96,141 @@ impl<T, const N : usize> Cartessian<T, N>{
     // }
 }
 
-impl<T, const N : usize> Map for Cartessian<T, N>
-    where T : Clone{
+impl<T: Clone, const N: usize> Map for Cartessian<T, N> {
     type Item = T;
 
-    fn map_inplace<'a, F>(&'a mut self, f : F)
-        where F : FnMut(&'a mut T) {
+    fn map_inplace<'a, F>(&'a mut self, f: F)
+    where
+        F: FnMut(&'a mut T),
+    {
         self.iter_mut().for_each(f)
     }
 
-    fn zip_mut_with<F, U>(&mut self, rhs : U, mut f : F)
-        where F : FnMut(&mut T, <U as IntoIterator>::Item),
-            U : IntoIterator {
+    fn zip_mut_with<F, U>(&mut self, rhs: U, mut f: F)
+    where
+        F: FnMut(&mut T, <U as IntoIterator>::Item),
+        U: IntoIterator,
+    {
         self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
     }
 }
 
-
-impl<T, const N : usize> AsMut<[T]> for Cartessian<T, N>{
-    fn as_mut(&mut self) -> &mut [T]{
+impl<T, const N: usize> AsMut<[T]> for Cartessian<T, N> {
+    fn as_mut(&mut self) -> &mut [T] {
         self.coord.as_mut()
     }
 }
 
-impl<T, const N : usize> AsRef<[T]> for Cartessian<T, N>{
-    fn as_ref(&self) -> &[T]{
+impl<T, const N: usize> AsRef<[T]> for Cartessian<T, N> {
+    fn as_ref(&self) -> &[T] {
         self.coord.as_ref()
     }
 }
 
-impl<T, const N : usize> Borrow<[T]> for Cartessian<T, N>{
-    fn borrow(&self) -> &[T]{
+impl<T, const N: usize> Borrow<[T]> for Cartessian<T, N> {
+    fn borrow(&self) -> &[T] {
         self.coord.borrow()
     }
 }
 
-impl<T, const N : usize> BorrowMut<[T]> for Cartessian<T, N>{
-    fn borrow_mut(&mut self) -> &mut [T]{
+impl<T, const N: usize> BorrowMut<[T]> for Cartessian<T, N> {
+    fn borrow_mut(&mut self) -> &mut [T] {
         self.coord.borrow_mut()
     }
 }
 
-impl<T, const N : usize> Default for Cartessian<T, N>
-    where T : Default + Copy{
-    fn default() -> Self{
-        Self{
-            coord : [T::default(); N],
+impl<T, const N: usize> Default for Cartessian<T, N>
+where
+    T: Default + Copy,
+{
+    fn default() -> Self {
+        Self {
+            coord: [T::default(); N],
         }
     }
 }
 
-impl<T, const N : usize> Zeros for Cartessian<T, N>
-    where T : Zero + Copy{
-    fn zero_with_length(n : usize) -> Self {
-        if n != N{
-            panic!("Invalid Argument : Cartessian<T, {}> cannot be defined with length {}", N, n);
+impl<T, const N: usize> Zeros for Cartessian<T, N>
+where
+    T: Zero + Copy,
+{
+    fn zero_with_length(n: usize) -> Self {
+        if n != N {
+            panic!(
+                "Invalid Argument : Cartessian<T, {}> cannot be defined with length {}",
+                N, n
+            );
         }
-        Self{
-            coord : [T::zero(); N],
+        Self {
+            coord: [T::zero(); N],
         }
     }
 }
 
-impl<T, const N : usize> Hash for Cartessian<T, N>
-    where T : Hash{
-    fn hash<H>(&self, state : &mut H) where H : Hasher{
+impl<T, const N: usize> Hash for Cartessian<T, N>
+where
+    T: Hash,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         self.coord.hash(state)
     }
 }
 
-impl<T, I, const N : usize> Index<I> for Cartessian<T, N>
-    where [T]:Index<I>{
+impl<T, I, const N: usize> Index<I> for Cartessian<T, N>
+where
+    [T]: Index<I>,
+{
     type Output = <[T] as Index<I>>::Output;
 
-    fn index(&self, index : I) -> &<[T] as Index<I>>::Output{
+    fn index(&self, index: I) -> &<[T] as Index<I>>::Output {
         self.coord.index(index)
     }
 }
 
-impl<T, I, const N : usize> IndexMut<I> for Cartessian<T, N>
-    where [T]:IndexMut<I>{
-
-    fn index_mut(&mut self, index : I) -> &mut <[T] as Index<I>>::Output{
+impl<T, I, const N: usize> IndexMut<I> for Cartessian<T, N>
+where
+    [T]: IndexMut<I>,
+{
+    fn index_mut(&mut self, index: I) -> &mut <[T] as Index<I>>::Output {
         self.coord.index_mut(index)
     }
 }
 
-impl<T, const N : usize> Cartessian<T, N>{
-    pub fn iter<'a>(&'a self) -> Iter<'a, T>{
+impl<T, const N: usize> Cartessian<T, N> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         self.coord.iter()
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>{
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         self.coord.iter_mut()
     }
 }
 
-
-impl<'a, T, const N : usize> IntoIterator for &'a Cartessian<T, N>{
+impl<'a, T, const N: usize> IntoIterator for &'a Cartessian<T, N> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T>{
+    fn into_iter(self) -> Iter<'a, T> {
         self.coord.iter()
     }
 }
 
-impl<'a, T, const N : usize> IntoIterator for &'a mut Cartessian<T, N>{
+impl<'a, T, const N: usize> IntoIterator for &'a mut Cartessian<T, N> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T>{
+    fn into_iter(self) -> IterMut<'a, T> {
         self.coord.iter_mut()
     }
 }
 
-
 // ===========================================================================================================
 // ===========================================================================================================
 
-impl<T> CartessianND<T>{
+impl<T> CartessianND<T> {
     /// Return a reference to the element of coordinate at index, or return None if the index is out of bounds.
     /// Arrays also support indexing syntax: array[index].
     ///
@@ -229,19 +245,19 @@ impl<T> CartessianND<T>{
     ///     a[2] == 4.0
     /// )
     /// ```
-    pub fn get(&self, index : usize) -> Option<&T>{
+    pub fn get(&self, index: usize) -> Option<&T> {
         if index >= self.len() {
             return None;
         }
-        return Some(&self.coord[index])
+        return Some(&self.coord[index]);
     }
 
     /// Return a mutable reference to the element at index, or return None if the index is out of bounds.
-    pub fn get_mut(&mut self, index : usize) -> Option<&mut T>{
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index >= self.len() {
             return None;
         }
-        return Some(&mut self.coord[index])
+        return Some(&mut self.coord[index]);
     }
 
     // Call f by reference on each element and create a new vector with the new values.
@@ -278,103 +294,113 @@ impl<T> CartessianND<T>{
 }
 
 impl<T> Map for CartessianND<T>
-    where T : Clone{
+where
+    T: Clone,
+{
     type Item = T;
 
-    fn map_inplace<'a, F>(&'a mut self, f : F)
-        where F : FnMut(&'a mut T) {
+    fn map_inplace<'a, F>(&'a mut self, f: F)
+    where
+        F: FnMut(&'a mut T),
+    {
         self.iter_mut().for_each(f)
     }
 
-    fn zip_mut_with<F, U>(&mut self, rhs : U, mut f : F)
-        where F : FnMut(&mut T, <U as IntoIterator>::Item),
-        U : IntoIterator {
+    fn zip_mut_with<F, U>(&mut self, rhs: U, mut f: F)
+    where
+        F: FnMut(&mut T, <U as IntoIterator>::Item),
+        U: IntoIterator,
+    {
         self.iter_mut().zip(rhs).for_each(|(x, y)| f(x, y));
     }
 }
 
-
-impl<T> AsMut<Vec<T>> for CartessianND<T>{
-    fn as_mut(&mut self) -> &mut Vec<T>{
+impl<T> AsMut<Vec<T>> for CartessianND<T> {
+    fn as_mut(&mut self) -> &mut Vec<T> {
         self.coord.as_mut()
     }
 }
 
-impl<T> AsRef<Vec<T>> for CartessianND<T>{
-    fn as_ref(&self) -> &Vec<T>{
+impl<T> AsRef<Vec<T>> for CartessianND<T> {
+    fn as_ref(&self) -> &Vec<T> {
         self.coord.as_ref()
     }
 }
 
-impl<T> Borrow<Vec<T>> for CartessianND<T>{
-    fn borrow(&self) -> &Vec<T>{
+impl<T> Borrow<Vec<T>> for CartessianND<T> {
+    fn borrow(&self) -> &Vec<T> {
         self.coord.borrow()
     }
 }
 
-impl<T> BorrowMut<Vec<T>> for CartessianND<T>{
-    fn borrow_mut(&mut self) -> &mut Vec<T>{
+impl<T> BorrowMut<Vec<T>> for CartessianND<T> {
+    fn borrow_mut(&mut self) -> &mut Vec<T> {
         self.coord.borrow_mut()
     }
 }
 
-
 impl<T> Hash for CartessianND<T>
-    where T : Hash{
-    fn hash<H>(&self, state : &mut H) where H : Hasher{
+where
+    T: Hash,
+{
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: Hasher,
+    {
         self.coord.hash(state)
     }
 }
 
 impl<T, I> Index<I> for CartessianND<T>
-    where Vec<T> : Index<I>{
+where
+    Vec<T>: Index<I>,
+{
     type Output = <Vec<T> as Index<I>>::Output;
 
-    fn index(&self, index : I) -> &<Vec<T> as Index<I>>::Output{
+    fn index(&self, index: I) -> &<Vec<T> as Index<I>>::Output {
         self.coord.index(index)
     }
 }
 
 impl<T, I> IndexMut<I> for CartessianND<T>
-    where Vec<T> : IndexMut<I>{
-
-    fn index_mut(&mut self, index : I) -> &mut <Vec<T>  as Index<I>>::Output{
+where
+    Vec<T>: IndexMut<I>,
+{
+    fn index_mut(&mut self, index: I) -> &mut <Vec<T> as Index<I>>::Output {
         self.coord.index_mut(index)
     }
 }
 
-impl<T> CartessianND<T>{
-    pub fn iter<'a>(&'a self) -> Iter<'a, T>{
+impl<T> CartessianND<T> {
+    pub fn iter<'a>(&'a self) -> Iter<'a, T> {
         self.coord.iter()
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T>{
+    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         self.coord.iter_mut()
     }
 }
 
-
-impl<'a, T> IntoIterator for &'a CartessianND<T>{
+impl<'a, T> IntoIterator for &'a CartessianND<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
-    fn into_iter(self) -> Iter<'a, T>{
+    fn into_iter(self) -> Iter<'a, T> {
         self.coord.iter()
     }
 }
 
-impl<'a, T> IntoIterator for &'a mut CartessianND<T>{
+impl<'a, T> IntoIterator for &'a mut CartessianND<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
-    fn into_iter(self) -> IterMut<'a, T>{
+    fn into_iter(self) -> IterMut<'a, T> {
         self.coord.iter_mut()
     }
 }
 
-impl<T> Zeros for CartessianND<T>
-    where T : Zero + Copy{
-    fn zero_with_length(n : usize) -> Self {
+impl<T: Zero + Clone> Zeros for CartessianND<T> {
+    fn zero_with_length(n: usize) -> Self {
         CartessianND::<T>::new(vec![T::zero(); n])
     }
 }
@@ -382,10 +408,10 @@ impl<T> Zeros for CartessianND<T>
 #[cfg(test)]
 mod test {
     use crate::vector::basic::Map;
-use crate::vector::{CartessianND, Cartessian2D};
+    use crate::vector::{Cartessian2D, CartessianND};
 
     #[test]
-    fn test_basic(){
+    fn test_basic() {
         let mut a = Cartessian2D::new([1.0f64, 3.0]);
         assert_eq!(a.get(0), Some(&1.0));
         assert_eq!(a.get(1), Some(&3.0));
@@ -399,7 +425,7 @@ use crate::vector::{CartessianND, Cartessian2D};
         assert_eq!(a, Cartessian2D::new([4.0, 9.0]));
 
         let b = Cartessian2D::new([1.0, 3.0]);
-        a.zip_mut_with(&b, |x, y| {*x = *x + *y});
+        a.zip_mut_with(&b, |x, y| *x = *x + *y);
         assert_eq!(a, Cartessian2D::new([5.0, 12.0]));
 
         assert_eq!(a.as_ref(), &[5.0, 12.0]);
@@ -419,9 +445,6 @@ use crate::vector::{CartessianND, Cartessian2D};
         assert_eq!(iter.next(), Some(&9.0));
         assert_eq!(iter.next(), None);
 
-
-
-
         let mut c = CartessianND::new(vec![1.0f64, 3.0]);
         assert_eq!(c.get(0), Some(&1.0));
         assert_eq!(c.get(1), Some(&3.0));
@@ -435,7 +458,7 @@ use crate::vector::{CartessianND, Cartessian2D};
         assert_eq!(c, CartessianND::new(vec![4.0, 9.0]));
 
         let d = CartessianND::new(vec![1.0, 3.0]);
-        c.zip_mut_with(&d, |x, y| {*x = *x + *y});
+        c.zip_mut_with(&d, |x, y| *x = *x + *y);
         assert_eq!(c, CartessianND::new(vec![5.0, 12.0]));
 
         assert_eq!(c.as_ref(), &[5.0, 12.0]);
@@ -457,12 +480,8 @@ use crate::vector::{CartessianND, Cartessian2D};
     }
 
     #[test]
-    fn test_default(){
-        let  a = Cartessian2D::<i32>::default();
+    fn test_default() {
+        let a = Cartessian2D::<i32>::default();
         assert_eq!(a, Cartessian2D::new([0, 0]));
     }
 }
-
-
-
-

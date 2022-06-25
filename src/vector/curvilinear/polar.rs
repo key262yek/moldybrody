@@ -1,83 +1,81 @@
-use crate::format_convert::Brief;
+use crate::vector::Scalar;
+use crate::vector::{
+    product::{Dot, InnerProduct, Norm},
+    Vector,
+};
+use crate::vector::{Cartessian, CartessianND};
+use approx::AbsDiffEq;
+use num_traits::{Float, FloatConst};
+use std::convert::From;
+use std::fmt::Debug;
 
 use std::ops::Rem;
-use crate::vector::Scalar;
-use num_traits::{Float, FloatConst};
-use std::fmt::Formatter;
-use crate::error::Error;
-use std::fmt::{self, Display};
-use std::fmt::LowerExp;
-use std::str::FromStr;
-use crate::vector::{Vector, product::{Dot, InnerProduct, Norm}};
-use crate::vector::{Cartessian, CartessianND};
-use std::ops::{Neg, AddAssign, SubAssign, DivAssign, MulAssign, Mul, Div, Add, Sub, Index};
-use approx::AbsDiffEq;
-use std::fmt::Debug;
-use std::convert::From;
-
+use std::ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Copy, Clone, Debug)]
-pub struct Polar<T>{
-    pub radius : T,
-    pub theta : T,
+pub struct Polar<T> {
+    pub radius: T,
+    pub theta: T,
 }
 
 impl<T> Vector for Polar<T>
-    where T : Copy + Debug + PartialEq{
+where
+    T: Scalar,
+{
     type Item = T;
 
-    fn dim(&self) -> usize{
+    fn dim(&self) -> usize {
         2
     }
 }
 
-impl<T> Polar<T>{
-    pub fn new(radius : T, theta : T) -> Self
-        where T : AbsDiffEq<Epsilon = T>  + PartialOrd + FloatConst + Float{
+impl<T> Polar<T> {
+    pub fn new(radius: T, theta: T) -> Self
+    where
+        T: AbsDiffEq<Epsilon = T> + PartialOrd + FloatConst + Float,
+    {
         let pi = <T as FloatConst>::PI();
-        let (r, t) = if radius.abs_diff_eq(&T::zero(), <T as AbsDiffEq>::default_epsilon()){
+        let (r, t) = if radius.abs_diff_eq(&T::zero(), <T as AbsDiffEq>::default_epsilon()) {
             (T::zero(), T::zero())
-        } else if radius < T::zero(){
+        } else if radius < T::zero() {
             (-radius, (theta + pi) % (pi + pi))
         } else {
             (radius, theta % (pi + pi))
         };
 
-        Self{
-            radius : r,
-            theta : t,
+        Self {
+            radius: r,
+            theta: t,
         }
     }
 
-    pub fn get_radius(&self) -> &T{
+    pub fn get_radius(&self) -> &T {
         &self.radius
     }
 
-    pub fn get_theta(&self) -> &T{
+    pub fn get_theta(&self) -> &T {
         &self.theta
     }
 
-    pub fn get_mut_radius(&mut self) -> &mut T{
+    pub fn get_mut_radius(&mut self) -> &mut T {
         &mut self.radius
     }
 
-    pub fn get_mut_theta(&mut self) -> &mut T{
+    pub fn get_mut_theta(&mut self) -> &mut T {
         &mut self.theta
     }
 
-    pub fn dim(&self) -> usize{
+    pub fn dim(&self) -> usize {
         2
     }
 
-    pub(crate) fn index(&self, index : usize) -> T
-        where T : Float{
-        match index{
-            0 => {
-                self.radius * self.theta.cos()
-            },
-            1 => {
-                self.radius * self.theta.sin()
-            },
+    pub(crate) fn index(&self, index: usize) -> T
+    where
+        T: Float,
+    {
+        match index {
+            0 => self.radius * self.theta.cos(),
+            1 => self.radius * self.theta.sin(),
             _ => {
                 panic!("Out of Bound")
             }
@@ -86,18 +84,22 @@ impl<T> Polar<T>{
 }
 
 impl<T> Default for Polar<T>
-    where T : Default{
-    fn default() -> Self{
-        Self{
-            radius : T::default(),
-            theta : T::default(),
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Self {
+            radius: T::default(),
+            theta: T::default(),
         }
     }
 }
 
 impl<T> PartialEq for Polar<T>
-    where T : PartialEq + FloatConst + Float{
-    fn eq(&self, other : &Self) -> bool{
+where
+    T: PartialEq + FloatConst + Float,
+{
+    fn eq(&self, other: &Self) -> bool {
         let dr = self.radius - other.radius;
         let dt = self.theta - other.theta;
         let pi = <T as FloatConst>::PI();
@@ -106,10 +108,11 @@ impl<T> PartialEq for Polar<T>
     }
 }
 
-
 impl<T> AbsDiffEq for Polar<T>
-    where T : AbsDiffEq + FloatConst + Float,
-        <T as AbsDiffEq>::Epsilon : Clone{
+where
+    T: AbsDiffEq + FloatConst + Float,
+    <T as AbsDiffEq>::Epsilon: Clone,
+{
     type Epsilon = <T as AbsDiffEq>::Epsilon;
 
     fn default_epsilon() -> Self::Epsilon {
@@ -119,160 +122,181 @@ impl<T> AbsDiffEq for Polar<T>
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         let pi = <T as FloatConst>::PI();
         let dt = ((self.theta - other.theta) / pi).fract();
-        self.radius.abs_diff_eq(&other.radius, epsilon.clone()) && dt.abs_diff_eq(&T::zero(), epsilon.clone())
+        self.radius.abs_diff_eq(&other.radius, epsilon.clone())
+            && dt.abs_diff_eq(&T::zero(), epsilon.clone())
     }
 }
 
-
 impl<T> From<Polar<T>> for Cartessian<T, 2>
-    where T : Float + Scalar{
-    fn from(polar : Polar<T>) -> Self{
-        Self{
-            coord : [polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Float + Scalar,
+{
+    fn from(polar: Polar<T>) -> Self {
+        Self {
+            coord: [
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<&Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
-    fn from(polar : &Polar<T>) -> Self{
-        Self{
-            coord : [polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Scalar + Float,
+{
+    fn from(polar: &Polar<T>) -> Self {
+        Self {
+            coord: [
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<&mut Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
-    fn from(polar : &mut Polar<T>) -> Self{
-        Self{
-            coord : [polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Scalar + Float,
+{
+    fn from(polar: &mut Polar<T>) -> Self {
+        Self {
+            coord: [
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<Cartessian<T, 2>> for Polar<T>
-    where T : Float + Scalar,
-          Cartessian<T, 2> : Norm<Output = T>{
-    fn from(carte : Cartessian<T, 2>) -> Self{
+where
+    T: Float + Scalar,
+    Cartessian<T, 2>: Norm<Output = T>,
+{
+    fn from(carte: Cartessian<T, 2>) -> Self {
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
 
 impl<T> From<&Cartessian<T, 2>> for Polar<T>
-    where T : Float + Scalar,
-          Cartessian<T, 2> : Norm<Output = T>{
-    fn from(carte : &Cartessian<T, 2>) -> Self{
+where
+    T: Float + Scalar,
+    Cartessian<T, 2>: Norm<Output = T>,
+{
+    fn from(carte: &Cartessian<T, 2>) -> Self {
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
 
 impl<T> From<&mut Cartessian<T, 2>> for Polar<T>
-    where T : Float + Scalar,
-          Cartessian<T, 2> : Norm<Output = T>{
-    fn from(carte : &mut Cartessian<T, 2>) -> Self{
+where
+    T: Float + Scalar,
+    Cartessian<T, 2>: Norm<Output = T>,
+{
+    fn from(carte: &mut Cartessian<T, 2>) -> Self {
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
 
-
-
 impl<T> From<Polar<T>> for CartessianND<T>
-    where T : Float + Scalar{
-    fn from(polar : Polar<T>) -> Self{
-        Self{
-            coord : vec![polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Float + Scalar,
+{
+    fn from(polar: Polar<T>) -> Self {
+        Self {
+            coord: vec![
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<&Polar<T>> for CartessianND<T>
-    where T : Float + Scalar{
-    fn from(polar : &Polar<T>) -> Self{
-        Self{
-            coord : vec![polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Float + Scalar,
+{
+    fn from(polar: &Polar<T>) -> Self {
+        Self {
+            coord: vec![
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<&mut Polar<T>> for CartessianND<T>
-    where T : Float + Scalar{
-    fn from(polar : &mut Polar<T>) -> Self{
-        Self{
-            coord : vec![polar.radius * polar.theta.cos(), polar.radius * polar.theta.sin()],
+where
+    T: Float + Scalar,
+{
+    fn from(polar: &mut Polar<T>) -> Self {
+        Self {
+            coord: vec![
+                polar.radius * polar.theta.cos(),
+                polar.radius * polar.theta.sin(),
+            ],
         }
     }
 }
 
 impl<T> From<CartessianND<T>> for Polar<T>
-    where T : Float + Scalar,
-          CartessianND<T> : Norm<Output = T>{
-    fn from(carte : CartessianND<T>) -> Self{
+where
+    T: Float + Scalar,
+    CartessianND<T>: Norm<Output = T>,
+{
+    fn from(carte: CartessianND<T>) -> Self {
         if carte.dim() != 2 {
             panic!("Polar coordinate is avaliable only on 2D domain");
         }
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
 
 impl<T> From<&CartessianND<T>> for Polar<T>
-    where T : Float + Scalar,
-          CartessianND<T> : Norm<Output = T>{
-    fn from(carte : &CartessianND<T>) -> Self{
+where
+    T: Float + Scalar,
+    CartessianND<T>: Norm<Output = T>,
+{
+    fn from(carte: &CartessianND<T>) -> Self {
         if carte.dim() != 2 {
             panic!("Polar coordinate is avaliable only on 2D domain");
         }
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
 
 impl<T> From<&mut CartessianND<T>> for Polar<T>
-    where T : Float + Scalar,
-          CartessianND<T> : Norm<Output = T>{
-    fn from(carte : &mut CartessianND<T>) -> Self{
+where
+    T: Float + Scalar,
+    CartessianND<T>: Norm<Output = T>,
+{
+    fn from(carte: &mut CartessianND<T>) -> Self {
         if carte.dim() != 2 {
             panic!("Polar coordinate is avaliable only on 2D domain");
         }
         let radius = carte.norm_l2();
         let theta = carte[1].atan2(carte[0]);
 
-        Self{
-            radius,
-            theta,
-        }
+        Self { radius, theta }
     }
 }
-
 
 macro_rules! impl_polar_op {
     ($trt : ident, $operator : tt, $mth : ident) => {
@@ -584,22 +608,25 @@ macro_rules! impl_polar_op {
 impl_polar_op!(Add, +, add);
 impl_polar_op!(Sub, -, sub);
 
-
 impl<T> Mul<T> for Polar<T>
-    where T : MulAssign + Clone{
+where
+    T: MulAssign + Clone,
+{
     type Output = Polar<T>;
 
-    fn mul(mut self, rhs : T) -> Polar<T>{
+    fn mul(mut self, rhs: T) -> Polar<T> {
         self.radius *= rhs;
         self
     }
 }
 
 impl<'a, T> Mul<T> for &'a Polar<T>
-    where T : MulAssign + Clone{
+where
+    T: MulAssign + Clone,
+{
     type Output = Polar<T>;
 
-    fn mul(self, rhs : T) -> Polar<T>{
+    fn mul(self, rhs: T) -> Polar<T> {
         let mut out = self.clone();
         out.radius *= rhs;
         out
@@ -607,39 +634,44 @@ impl<'a, T> Mul<T> for &'a Polar<T>
 }
 
 impl<T> MulAssign<T> for Polar<T>
-    where T : MulAssign{
-
-    fn mul_assign(&mut self, rhs : T){
+where
+    T: MulAssign,
+{
+    fn mul_assign(&mut self, rhs: T) {
         self.radius *= rhs;
     }
 }
 
 impl<T> Div<T> for Polar<T>
-    where T : DivAssign + Clone{
+where
+    T: DivAssign + Clone,
+{
     type Output = Polar<T>;
 
-    fn div(mut self, rhs : T) -> Polar<T>{
+    fn div(mut self, rhs: T) -> Polar<T> {
         self.radius /= rhs;
         self
     }
 }
 
 impl<'a, T> Div<T> for &'a Polar<T>
-    where T : DivAssign + Clone{
+where
+    T: DivAssign + Clone,
+{
     type Output = Polar<T>;
 
-    fn div(self, rhs : T) -> Polar<T>{
+    fn div(self, rhs: T) -> Polar<T> {
         let mut out = self.clone();
         out.radius /= rhs;
         out
     }
 }
 
-
 impl<T> DivAssign<T> for Polar<T>
-    where T : DivAssign{
-
-    fn div_assign(&mut self, rhs : T){
+where
+    T: DivAssign,
+{
+    fn div_assign(&mut self, rhs: T) {
         self.radius /= rhs;
     }
 }
@@ -690,7 +722,6 @@ macro_rules! impl_scalar_mul {
 }
 
 impl_scalar_mul!(f32, f64);
-
 
 macro_rules! impl_assign_op{
     ($trt : ident, $operate : tt, $mth : ident, $doc : expr) => {
@@ -814,79 +845,92 @@ macro_rules! impl_assign_op{
 impl_assign_op!(AddAssign, +, add_assign, "");
 impl_assign_op!(SubAssign, -, sub_assign, "");
 
-
 impl<T> Neg for Polar<T>
-    where T : Rem<Output = T> + FloatConst + Scalar{
+where
+    T: Rem<Output = T> + FloatConst + Scalar,
+{
     type Output = Self;
 
-    fn neg(mut self) -> Self{
+    fn neg(mut self) -> Self {
         let pi = T::PI();
         self.theta = (self.theta + pi) % (pi * pi);
         self
     }
 }
 
-
-
 impl<T> Dot<Polar<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : Polar<T>) -> T{
+    fn dot(&self, rhs: Polar<T>) -> T {
         self.radius * rhs.radius * (self.theta - rhs.theta).cos()
     }
 }
 
 impl<'a, T> Dot<&'a Polar<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : &'a Polar<T>) -> T{
+    fn dot(&self, rhs: &'a Polar<T>) -> T {
         self.radius * rhs.radius * (self.theta - rhs.theta).cos()
     }
 }
 
 impl<T> Dot<Cartessian<T, 2>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : Cartessian<T, 2>) -> T{
+    fn dot(&self, rhs: Cartessian<T, 2>) -> T {
         self.index(0) * *rhs.index(0) + self.index(1) * *rhs.index(1)
     }
 }
 
 impl<'a, T> Dot<&'a Cartessian<T, 2>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : &'a Cartessian<T, 2>) -> T{
+    fn dot(&self, rhs: &'a Cartessian<T, 2>) -> T {
         self.index(0) * *rhs.index(0) + self.index(1) * *rhs.index(1)
     }
 }
 
 impl<T> Dot<Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : Polar<T>) -> T{
+    fn dot(&self, rhs: Polar<T>) -> T {
         *self.index(0) * rhs.index(0) + *self.index(1) * rhs.index(1)
     }
 }
 
 impl<'a, T> Dot<&'a Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : &'a Polar<T>) -> T{
+    fn dot(&self, rhs: &'a Polar<T>) -> T {
         *self.index(0) * rhs.index(0) + *self.index(1) * rhs.index(1)
     }
 }
 
 impl<T> Dot<CartessianND<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : CartessianND<T>) -> T{
+    fn dot(&self, rhs: CartessianND<T>) -> T {
         if self.dim() != rhs.dim() {
             panic!("Dimension of CartessianND should be 2 for operate with Polar");
         }
@@ -896,10 +940,12 @@ impl<T> Dot<CartessianND<T>> for Polar<T>
 }
 
 impl<'a, T> Dot<&'a CartessianND<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : &'a CartessianND<T>) -> T{
+    fn dot(&self, rhs: &'a CartessianND<T>) -> T {
         if self.dim() != rhs.dim() {
             panic!("Dimension of CartessianND should be 2 for operate with Polar");
         }
@@ -909,10 +955,12 @@ impl<'a, T> Dot<&'a CartessianND<T>> for Polar<T>
 }
 
 impl<T> Dot<Polar<T>> for CartessianND<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : Polar<T>) -> T{
+    fn dot(&self, rhs: Polar<T>) -> T {
         if self.dim() != rhs.dim() {
             panic!("Dimension of CartessianND should be 2 for operate with Polar");
         }
@@ -922,10 +970,12 @@ impl<T> Dot<Polar<T>> for CartessianND<T>
 }
 
 impl<'a, T> Dot<&'a Polar<T>> for CartessianND<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn dot(&self, rhs : &'a Polar<T>) -> T{
+    fn dot(&self, rhs: &'a Polar<T>) -> T {
         if self.dim() != rhs.dim() {
             panic!("Dimension of CartessianND should be 2 for operate with Polar");
         }
@@ -934,101 +984,120 @@ impl<'a, T> Dot<&'a Polar<T>> for CartessianND<T>
     }
 }
 
-
 impl<T> InnerProduct<Polar<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : Polar<T>) -> T{
+    fn inner_product(&self, rhs: Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<'a, T> InnerProduct<&'a Polar<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : &'a Polar<T>) -> T{
+    fn inner_product(&self, rhs: &'a Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<T> InnerProduct<Cartessian<T, 2>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : Cartessian<T, 2>) -> T{
+    fn inner_product(&self, rhs: Cartessian<T, 2>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<'a, T> InnerProduct<&'a Cartessian<T, 2>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : &'a Cartessian<T, 2>) -> T{
+    fn inner_product(&self, rhs: &'a Cartessian<T, 2>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<T> InnerProduct<Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : Polar<T>) -> T{
+    fn inner_product(&self, rhs: Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<'a, T> InnerProduct<&'a Polar<T>> for Cartessian<T, 2>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : &'a Polar<T>) -> T{
+    fn inner_product(&self, rhs: &'a Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<T> InnerProduct<CartessianND<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : CartessianND<T>) -> T{
+    fn inner_product(&self, rhs: CartessianND<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<'a, T> InnerProduct<&'a CartessianND<T>> for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : &'a CartessianND<T>) -> T{
+    fn inner_product(&self, rhs: &'a CartessianND<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<T> InnerProduct<Polar<T>> for CartessianND<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : Polar<T>) -> T{
+    fn inner_product(&self, rhs: Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
 impl<'a, T> InnerProduct<&'a Polar<T>> for CartessianND<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
-    fn inner_product(&self, rhs : &'a Polar<T>) -> T{
+    fn inner_product(&self, rhs: &'a Polar<T>) -> T {
         self.dot(rhs)
     }
 }
 
-
-
 impl<T> Norm for Polar<T>
-    where T : Scalar + Float{
+where
+    T: Scalar + Float,
+{
     type Output = T;
 
     fn norm_l1(&self) -> Self::Output {
@@ -1039,88 +1108,20 @@ impl<T> Norm for Polar<T>
         self.radius
     }
 
-    fn norm_l2_sqr(&self) -> Self::Output{
+    fn norm_l2_sqr(&self) -> Self::Output {
         self.radius * self.radius
     }
 }
 
-
-impl<T : Display> Display for Polar<T>{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.radius, self.theta)
-    }
-}
-
-impl<T : LowerExp> LowerExp for Polar<T>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        LowerExp::fmt(&self.radius, f)?;
-        write!(f, ", ")?;
-        LowerExp::fmt(&self.theta, f)?;
-        Ok(())
-    }
-}
-
-
-
-impl<T> FromStr for Polar<T>
-    where T : FromStr + Default + AbsDiffEq<Epsilon=T> + FloatConst + Float{
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut args = s.trim()
-                                 .trim_matches(|p| p == '(' || p == ')')
-                                 .split(|c| c == ',' || c == ':')
-                                 .map(|x| x.trim().parse::<T>().map_or(Default::default(), |v| v));
-        let radius = match args.next(){
-            None => {
-                return Err(Error::make_error_syntax(crate::prelude::ErrorCode::InvalidArgumentInput));
-            },
-            Some(r) => {
-                r
-            },
-        };
-
-        let theta = match args.next(){
-            None => {
-                return Err(Error::make_error_syntax(crate::prelude::ErrorCode::InvalidArgumentInput));
-            },
-            Some(t) => {
-                t
-            },
-        };
-
-        return Ok(Polar::new(radius, theta));
-    }
-}
-
-impl<T : Display> Display for Brief<Polar<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.0.radius, self.0.theta)
-    }
-}
-
-impl<T : LowerExp> LowerExp for Brief<Polar<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        LowerExp::fmt(&self.0.radius, f)?;
-        write!(f, ":")?;
-        LowerExp::fmt(&self.0.theta, f)?;
-        Ok(())
-    }
-}
-
-
-
-
 #[cfg(test)]
 mod test {
-    use crate::format_convert::ConvertBrief;
-use approx::{assert_abs_diff_eq};
-    use std::f64::consts::PI;
-    use crate::vector::{CartessianND, Cartessian};
     use super::*;
+    use crate::vector::{Cartessian, CartessianND};
+    use approx::assert_abs_diff_eq;
+    use std::f64::consts::PI;
 
     #[test]
-    fn test_eq_partialeq_abs_diff_eq(){
+    fn test_eq_partialeq_abs_diff_eq() {
         let a = Polar::<f64>::new(1.0f64, PI / 4f64);
         let b = Polar::<f64>::new(1.0f64, PI * 2.25f64);
 
@@ -1129,7 +1130,7 @@ use approx::{assert_abs_diff_eq};
     }
 
     #[test]
-    fn test_basic(){
+    fn test_basic() {
         let mut a = Polar::<f64>::new(1.0f64, PI / 4f64);
         assert_eq!(a.get_radius(), &1.0f64);
         assert_eq!(a.get_theta(), &(PI / 4f64));
@@ -1143,34 +1144,55 @@ use approx::{assert_abs_diff_eq};
         assert_eq!(a.dim(), 2);
 
         let default = Polar::<f64>::default();
-        assert_eq!(default, Polar::<f64>{radius : 0f64, theta : 0f64});
+        assert_eq!(
+            default,
+            Polar::<f64> {
+                radius: 0f64,
+                theta: 0f64
+            }
+        );
 
         assert_abs_diff_eq!(a.index(0), 0.0f64);
         assert_abs_diff_eq!(a.index(1), 2.0f64);
     }
 
     #[test]
-    fn test_from(){
+    fn test_from() {
         let a = Polar::<f64>::new(1.0f64, PI / 4f64);
-        assert_abs_diff_eq!(Cartessian::from(&a), Cartessian::new([1f64/2f64.sqrt(); 2]));
-        assert_abs_diff_eq!(CartessianND::from(&a), CartessianND::new(vec![1f64/2f64.sqrt(); 2]));
+        assert_abs_diff_eq!(
+            Cartessian::from(&a),
+            Cartessian::new([1f64 / 2f64.sqrt(); 2])
+        );
+        assert_abs_diff_eq!(
+            CartessianND::from(&a),
+            CartessianND::new(vec![1f64 / 2f64.sqrt(); 2])
+        );
 
         let carte = Cartessian::new([0.0f64, 1.0f64]);
-        assert_abs_diff_eq!(Polar::<f64>::from(&carte), Polar::<f64>::new(1.0f64, PI / 2f64));
+        assert_abs_diff_eq!(
+            Polar::<f64>::from(&carte),
+            Polar::<f64>::new(1.0f64, PI / 2f64)
+        );
 
         let carte = CartessianND::new(vec![1.0f64, 0.0f64]);
-        assert_abs_diff_eq!(Polar::<f64>::from(&carte), Polar::<f64>::new(1.0f64, 0.0f64));
+        assert_abs_diff_eq!(
+            Polar::<f64>::from(&carte),
+            Polar::<f64>::new(1.0f64, 0.0f64)
+        );
     }
 
     #[test]
     #[should_panic]
-    fn test_from_panic(){
+    fn test_from_panic() {
         let carte = CartessianND::new(vec![1.0f64, 0.0f64, 0.0f64]);
-        assert_abs_diff_eq!(Polar::<f64>::from(&carte), Polar::<f64>::new(1.0f64, 0.0f64));
+        assert_abs_diff_eq!(
+            Polar::<f64>::from(&carte),
+            Polar::<f64>::new(1.0f64, 0.0f64)
+        );
     }
 
     #[test]
-    fn test_binary_op(){
+    fn test_binary_op() {
         let mut a = Polar::<f64>::new(1.0f64, PI / 2f64);
         let b = Polar::<f64>::new(1.0f64, PI);
         let mut carte = Cartessian::new([-1f64, 0f64]);
@@ -1221,12 +1243,12 @@ use approx::{assert_abs_diff_eq};
         carte_nd.abs_diff_eq(&CartessianND::new(vec![-1f64, 0f64]), 1e-6);
 
         a = -a;
-        a.abs_diff_eq(&Polar::<f64>::new(1f64, - PI * 0.5f64), 1e-6);
+        a.abs_diff_eq(&Polar::<f64>::new(1f64, -PI * 0.5f64), 1e-6);
     }
 
     #[test]
     #[should_panic]
-    fn test_add_panic(){
+    fn test_add_panic() {
         let a = Polar::<f64>::new(1.0f64, PI / 2f64);
         let carte = CartessianND::new(vec![-1f64, 0f64, 0f64]);
 
@@ -1234,7 +1256,7 @@ use approx::{assert_abs_diff_eq};
     }
 
     #[test]
-    fn test_dot(){
+    fn test_dot() {
         let a = Polar::<f64>::new(1.0f64, PI / 2f64);
         let b = Polar::<f64>::new(1.0f64, PI);
         let carte = Cartessian::new([-1f64, 0f64]);
@@ -1249,7 +1271,7 @@ use approx::{assert_abs_diff_eq};
 
     #[test]
     #[should_panic]
-    fn test_dot_panic(){
+    fn test_dot_panic() {
         let a = Polar::<f64>::new(1.0f64, PI / 2f64);
         let carte = CartessianND::new(vec![-1f64, 0f64, 0f64]);
 
@@ -1257,40 +1279,10 @@ use approx::{assert_abs_diff_eq};
     }
 
     #[test]
-    fn test_norm(){
+    fn test_norm() {
         let a = Polar::<f64>::new(1.0f64, PI / 4f64);
 
         assert_abs_diff_eq!(a.norm_l1(), 2f64.sqrt());
         assert_abs_diff_eq!(a.norm_l2(), 1f64);
-
     }
-
-    #[test]
-    fn test_format(){
-        let a = Polar::<f64>::new(2f64, PI);
-        assert_eq!(a.to_string(), "2, 3.141592653589793");
-        assert_eq!(format!("{:.3e}", a), "2.000e0, 3.142e0");
-        assert_eq!(format!("{}", a.brief()), "2:3.141592653589793");
-        assert_eq!(format!("{:.3e}", a.brief()), "2.000e0:3.142e0");
-    }
-
-    #[test]
-    fn test_from_str(){
-        let str1 = "2, 2";
-        assert_eq!(Polar::<f64>::from_str(&str1).unwrap(), Polar::new(2f64, 2f64));
-
-        let str2 = "2:2";
-        assert_eq!(Polar::<f64>::from_str(&str2).unwrap(), Polar::new(2f64, 2f64));
-
-        let str3 = "(2, 2)";
-        assert_eq!(Polar::<f64>::from_str(&str3).unwrap(), Polar::new(2f64, 2f64));
-
-        let str4 = "(2e0:2e0";
-        assert_eq!(Polar::<f64>::from_str(&str4).unwrap(), Polar::new(2f64, 2f64));
-    }
-
 }
-
-
-
-

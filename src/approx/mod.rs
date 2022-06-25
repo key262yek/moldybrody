@@ -9,7 +9,7 @@ use crate::error::Error;
 // use crate::force::Bimolecular;
 // use crate::force::Global;
 use crate::state::State;
-use crate::vector::arithmetic::Scalar;
+use crate::vector::Scalar;
 use crate::vector::Vector;
 // use std::ops::{Index, IndexMut};
 

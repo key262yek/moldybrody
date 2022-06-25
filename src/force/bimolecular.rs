@@ -1,10 +1,10 @@
 use crate::force::Bimolecular;
 use crate::state::Mass;
 use crate::state::State;
-use crate::vector::arithmetic::Scalar;
 use crate::vector::basic::Map;
 use crate::vector::product::Distance;
 use crate::vector::product::Norm;
+use crate::vector::Scalar;
 use crate::vector::Vector;
 use std::ops::AddAssign;
 use std::ops::Neg;

@@ -1,18 +1,15 @@
-
 use crate::vector::basic::Map;
-use std::iter::Sum;
-use num_traits::{One, Zero};
-use std::ops::{Add, Sub, Mul, Div, Neg, AddAssign, SubAssign, MulAssign, DivAssign};
-use std::fmt::{Debug, Display};
-use ndarray_linalg::types::Scalar as NDScalar;
-use num_complex::{Complex32, Complex64};
+use crate::vector::Float;
+use crate::vector::Integer;
+use crate::vector::Scalar;
 use approx::AbsDiffEq;
 
-use super::{Cartessian, CartessianND};
+use num_complex::{Complex32, Complex64};
+use std::fmt::Debug;
 
-pub trait Integer : 'static + Copy + Eq + PartialEq + PartialOrd + Ord + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> {}
-pub trait Scalar : 'static + Debug + Copy + PartialEq + Sum + Zero + One + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + Div<Output = Self> + AddAssign + SubAssign + DivAssign + MulAssign{}
-pub trait Float : NDScalar + Display + Debug + Scalar + Send + Sync + AbsDiffEq{}
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+
+use super::{Cartessian, CartessianND};
 
 macro_rules! impl_integer {
     ($name : ident $(, $names : ident)*) => {
@@ -34,7 +31,9 @@ macro_rules! impl_scalar {
     };
 }
 
-impl_scalar!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, Complex32, Complex64);
+impl_scalar!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, Complex32, Complex64
+);
 
 macro_rules! impl_float {
     ($name : ident $(, $names : ident)*) => {
@@ -46,9 +45,6 @@ macro_rules! impl_float {
 }
 
 impl_float!(f32, f64, Complex32, Complex64);
-
-
-
 
 fn clone_iopf<A: Copy, B: Copy>(f: impl Fn(A, B) -> A) -> impl FnMut(&mut A, &B) {
     move |x, y| *x = f(*x, *y)
@@ -346,8 +342,6 @@ all_scalar_ops!(f64);
 all_scalar_ops!(Complex32);
 all_scalar_ops!(Complex64);
 
-
-
 macro_rules! impl_assign_op{
     ($trt : ident, $mth : ident, $doc : expr) => {
 
@@ -435,34 +429,39 @@ impl_assign_op!(
     "Perform `self /= rhs` as elementwise division (in place).\n"
 );
 
-impl<T, const N : usize> Neg for Cartessian<T, N>
-        where T : Neg<Output = T> + Copy + Clone{
+impl<T, const N: usize> Neg for Cartessian<T, N>
+where
+    T: Neg<Output = T> + Copy + Clone,
+{
     type Output = Self;
 
-    fn neg(mut self) -> Self{
-        self.map_inplace( |elt| {
+    fn neg(mut self) -> Self {
+        self.map_inplace(|elt| {
             *elt = -elt.clone();
         });
         self
     }
 }
-
 
 impl<T> Neg for CartessianND<T>
-        where T : Neg<Output = T> + Copy + Clone{
+where
+    T: Neg<Output = T> + Copy + Clone,
+{
     type Output = Self;
 
-    fn neg(mut self) -> Self{
-        self.map_inplace( |elt| {
+    fn neg(mut self) -> Self {
+        self.map_inplace(|elt| {
             *elt = -elt.clone();
         });
         self
     }
 }
 
-impl<T, const N : usize> AbsDiffEq<Self> for Cartessian<T, N>
-    where T : AbsDiffEq<T>,
-          <T as AbsDiffEq>::Epsilon : Clone{
+impl<T, const N: usize> AbsDiffEq<Self> for Cartessian<T, N>
+where
+    T: AbsDiffEq<T>,
+    <T as AbsDiffEq>::Epsilon: Clone,
+{
     type Epsilon = T::Epsilon;
 
     fn default_epsilon() -> Self::Epsilon {
@@ -470,13 +469,18 @@ impl<T, const N : usize> AbsDiffEq<Self> for Cartessian<T, N>
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        !self.iter().zip(other).any(|(x,y)| !x.abs_diff_eq(y, epsilon.clone()))
+        !self
+            .iter()
+            .zip(other)
+            .any(|(x, y)| !x.abs_diff_eq(y, epsilon.clone()))
     }
 }
 
 impl<T> AbsDiffEq<Self> for CartessianND<T>
-    where T : AbsDiffEq<T>,
-          <T as AbsDiffEq>::Epsilon : Clone{
+where
+    T: AbsDiffEq<T>,
+    <T as AbsDiffEq>::Epsilon: Clone,
+{
     type Epsilon = T::Epsilon;
 
     fn default_epsilon() -> Self::Epsilon {
@@ -484,30 +488,35 @@ impl<T> AbsDiffEq<Self> for CartessianND<T>
     }
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
-        !self.iter().zip(other).any(|(x,y)| !x.abs_diff_eq(y, epsilon.clone()))
+        !self
+            .iter()
+            .zip(other)
+            .any(|(x, y)| !x.abs_diff_eq(y, epsilon.clone()))
     }
 }
 
-impl<T, const N : usize> Cartessian<T, N>
-    where T : Scalar{
-
-    pub fn zeros() -> Self{
+impl<T, const N: usize> Cartessian<T, N>
+where
+    T: Scalar,
+{
+    pub fn zeros() -> Self {
         Self::new([T::zero(); N])
     }
 
-    pub fn ones() -> Self{
+    pub fn ones() -> Self {
         Self::new([T::one(); N])
     }
 }
 
 impl<T> CartessianND<T>
-    where T : Scalar{
-
-    pub fn zeros(n : usize) -> Self{
+where
+    T: Scalar,
+{
+    pub fn zeros(n: usize) -> Self {
         Self::new(vec![T::zero(); n])
     }
 
-    pub fn ones(n : usize) -> Self{
+    pub fn ones(n: usize) -> Self {
         Self::new(vec![T::one(); n])
     }
 }
@@ -515,113 +524,119 @@ impl<T> CartessianND<T>
 #[cfg(test)]
 mod test {
     use super::*;
-    use approx::assert_abs_diff_eq;
     use crate::vector::Cartessian2D;
+    use approx::assert_abs_diff_eq;
 
     #[test]
-    fn test_binary_op(){
-        let a = Cartessian2D::from_vec(vec![1, 0]).unwrap();
-        let b = Cartessian2D::from_vec(vec![1, 2]).unwrap();
+    fn test_binary_op() {
+        let a = Cartessian2D::new([1, 0]);
+        let b = Cartessian2D::new([1, 2]);
 
-        assert_eq!(a.clone() + b.clone(), Cartessian2D::from_vec(vec![2, 2]).unwrap());
-        assert_eq!(a.clone() - b.clone(), Cartessian2D::from_vec(vec![0, -2]).unwrap());
-        assert_eq!(a.clone() * b.clone(), Cartessian2D::from_vec(vec![1, 0]).unwrap());
+        assert_eq!(a.clone() + b.clone(), Cartessian2D::new([2, 2]));
+        assert_eq!(a.clone() - b.clone(), Cartessian2D::new([0, -2]));
+        assert_eq!(a.clone() * b.clone(), Cartessian2D::new([1, 0]));
 
-        assert_eq!(a.clone() + &b, Cartessian2D::from_vec(vec![2, 2]).unwrap());
-        assert_eq!(a.clone() - &b, Cartessian2D::from_vec(vec![0, -2]).unwrap());
-        assert_eq!(a.clone() * &b, Cartessian2D::from_vec(vec![1, 0]).unwrap());
+        assert_eq!(a.clone() + &b, Cartessian2D::new([2, 2]));
+        assert_eq!(a.clone() - &b, Cartessian2D::new([0, -2]));
+        assert_eq!(a.clone() * &b, Cartessian2D::new([1, 0]));
 
-        assert_eq!(&a + b.clone(), Cartessian2D::from_vec(vec![2, 2]).unwrap());
-        assert_eq!(&a - b.clone(), Cartessian2D::from_vec(vec![0, -2]).unwrap());
-        assert_eq!(&a * b.clone(), Cartessian2D::from_vec(vec![1, 0]).unwrap());
+        assert_eq!(&a + b.clone(), Cartessian2D::new([2, 2]));
+        assert_eq!(&a - b.clone(), Cartessian2D::new([0, -2]));
+        assert_eq!(&a * b.clone(), Cartessian2D::new([1, 0]));
 
-        assert_eq!(&a + &b, Cartessian2D::from_vec(vec![2, 2]).unwrap());
-        assert_eq!(&a - &b, Cartessian2D::from_vec(vec![0, -2]).unwrap());
-        assert_eq!(&a * &b, Cartessian2D::from_vec(vec![1, 0]).unwrap());
+        assert_eq!(&a + &b, Cartessian2D::new([2, 2]));
+        assert_eq!(&a - &b, Cartessian2D::new([0, -2]));
+        assert_eq!(&a * &b, Cartessian2D::new([1, 0]));
 
-        let a = Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap();
-        let b = Cartessian2D::from_vec(vec![1.0, 2.0]).unwrap();
+        let a = Cartessian2D::new([1.0, 0.0]);
+        let b = Cartessian2D::new([1.0, 2.0]);
 
-        assert_eq!(a.clone() / b.clone(), Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap());
-        assert_eq!(a.clone() / &b, Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap());
-        assert_eq!(&a / b.clone(), Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap());
-        assert_eq!(&a / &b, Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap());
+        assert_eq!(a.clone() / b.clone(), Cartessian2D::new([1.0, 0.0]));
+        assert_eq!(a.clone() / &b, Cartessian2D::new([1.0, 0.0]));
+        assert_eq!(&a / b.clone(), Cartessian2D::new([1.0, 0.0]));
+        assert_eq!(&a / &b, Cartessian2D::new([1.0, 0.0]));
     }
 
     #[test]
-    fn test_assign_op(){
-        let mut a = Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap();
-        let b = Cartessian2D::from_vec(vec![1.0, 2.0]).unwrap();
+    fn test_assign_op() {
+        let mut a = Cartessian2D::new([1.0, 0.0]);
+        let b = Cartessian2D::new([1.0, 2.0]);
 
         a += &b;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![2.0, 2.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([2.0, 2.0]));
 
         a += 2f64;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![4.0, 4.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([4.0, 4.0]));
 
         a *= &b;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![4.0, 8.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([4.0, 8.0]));
 
         a *= 2f64;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![8.0, 16.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([8.0, 16.0]));
 
         a -= &b;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![7.0, 14.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([7.0, 14.0]));
 
         a -= 2f64;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![5.0, 12.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([5.0, 12.0]));
 
         a /= &b;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![5.0, 6.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([5.0, 6.0]));
 
         a /= 2f64;
-        assert_eq!(&a, &Cartessian2D::from_vec(vec![2.5, 3.0]).unwrap());
+        assert_eq!(&a, &Cartessian2D::new([2.5, 3.0]));
     }
 
     #[test]
-    fn test_scalar_op(){
-        let a = Cartessian2D::from_vec(vec![1.0, 2.0]).unwrap();
+    fn test_scalar_op() {
+        let a = Cartessian2D::new([1.0, 2.0]);
         let c = 3f64;
 
-        assert_abs_diff_eq!(a.clone() + c, Cartessian2D::from_vec(vec![4.0, 5.0]).unwrap());
-        assert_abs_diff_eq!(a.clone() - c, Cartessian2D::from_vec(vec![-2.0, -1.0]).unwrap());
-        assert_abs_diff_eq!(a.clone() * c, Cartessian2D::from_vec(vec![3.0, 6.0]).unwrap());
-        assert_abs_diff_eq!(a.clone() / c, Cartessian2D::from_vec(vec![0.3333333333333333, 0.6666666666666666]).unwrap());
+        assert_abs_diff_eq!(a.clone() + c, Cartessian2D::new([4.0, 5.0]));
+        assert_abs_diff_eq!(a.clone() - c, Cartessian2D::new([-2.0, -1.0]));
+        assert_abs_diff_eq!(a.clone() * c, Cartessian2D::new([3.0, 6.0]));
+        assert_abs_diff_eq!(
+            a.clone() / c,
+            Cartessian2D::new([0.3333333333333333, 0.6666666666666666])
+        );
 
-        assert_abs_diff_eq!(&a + c, Cartessian2D::from_vec(vec![4.0, 5.0]).unwrap());
-        assert_abs_diff_eq!(&a - c, Cartessian2D::from_vec(vec![-2.0, -1.0]).unwrap());
-        assert_abs_diff_eq!(&a * c, Cartessian2D::from_vec(vec![3.0, 6.0]).unwrap());
-        assert_abs_diff_eq!(&a / c, Cartessian2D::from_vec(vec![0.3333333333333333, 0.6666666666666666]).unwrap());
+        assert_abs_diff_eq!(&a + c, Cartessian2D::new([4.0, 5.0]));
+        assert_abs_diff_eq!(&a - c, Cartessian2D::new([-2.0, -1.0]));
+        assert_abs_diff_eq!(&a * c, Cartessian2D::new([3.0, 6.0]));
+        assert_abs_diff_eq!(
+            &a / c,
+            Cartessian2D::new([0.3333333333333333, 0.6666666666666666])
+        );
 
-        assert_abs_diff_eq!(c + a.clone(), Cartessian2D::from_vec(vec![4.0, 5.0]).unwrap());
-        assert_abs_diff_eq!(c - a.clone(), Cartessian2D::from_vec(vec![2.0, 1.0]).unwrap());
-        assert_abs_diff_eq!(c * a.clone(), Cartessian2D::from_vec(vec![3.0, 6.0]).unwrap());
-        assert_abs_diff_eq!(c / a.clone(), Cartessian2D::from_vec(vec![3.0, 1.5]).unwrap());
+        assert_abs_diff_eq!(c + a.clone(), Cartessian2D::new([4.0, 5.0]));
+        assert_abs_diff_eq!(c - a.clone(), Cartessian2D::new([2.0, 1.0]));
+        assert_abs_diff_eq!(c * a.clone(), Cartessian2D::new([3.0, 6.0]));
+        assert_abs_diff_eq!(c / a.clone(), Cartessian2D::new([3.0, 1.5]));
 
-        assert_abs_diff_eq!(c + &a, Cartessian2D::from_vec(vec![4.0, 5.0]).unwrap());
-        assert_abs_diff_eq!(c - &a, Cartessian2D::from_vec(vec![2.0, 1.0]).unwrap());
-        assert_abs_diff_eq!(c * &a, Cartessian2D::from_vec(vec![3.0, 6.0]).unwrap());
-        assert_abs_diff_eq!(c / &a, Cartessian2D::from_vec(vec![3.0, 1.5]).unwrap());
+        assert_abs_diff_eq!(c + &a, Cartessian2D::new([4.0, 5.0]));
+        assert_abs_diff_eq!(c - &a, Cartessian2D::new([2.0, 1.0]));
+        assert_abs_diff_eq!(c * &a, Cartessian2D::new([3.0, 6.0]));
+        assert_abs_diff_eq!(c / &a, Cartessian2D::new([3.0, 1.5]));
     }
 
     #[test]
-    fn test_neg(){
-        let a = Cartessian2D::from_vec(vec![1.0, 0.0]).unwrap();
-        assert_eq!(-a, Cartessian2D::from_vec(vec![-1.0, 0.0]).unwrap());
+    fn test_neg() {
+        let a = Cartessian2D::new([1.0, 0.0]);
+        assert_eq!(-a, Cartessian2D::new([-1.0, 0.0]));
 
-        let b = Cartessian2D::from_vec(vec![1.0, 2.0]).unwrap();
-        assert_eq!(-b, Cartessian2D::from_vec(vec![-1.0, -2.0]).unwrap());
+        let b = Cartessian2D::new([1.0, 2.0]);
+        assert_eq!(-b, Cartessian2D::new([-1.0, -2.0]));
     }
 
     #[test]
-    fn test_abs_diff_eq(){
-        let a = Cartessian2D::from_vec(vec![1f64, 2f64.sqrt()]).unwrap();
-        let test = Cartessian2D::from_vec(vec![1f64, 1.4142135623730951]).unwrap();
+    fn test_abs_diff_eq() {
+        let a = Cartessian2D::new([1f64, 2f64.sqrt()]);
+        let test = Cartessian2D::new([1f64, 1.4142135623730951]);
         assert!(a.abs_diff_eq(&test, 1e-10));
     }
 
     #[test]
-    fn test_binary_op_nd(){
+    fn test_binary_op_nd() {
         let a = CartessianND::new(vec![1, 0]);
         let b = CartessianND::new(vec![1, 2]);
 
@@ -651,7 +666,7 @@ mod test {
     }
 
     #[test]
-    fn test_assign_op_nd(){
+    fn test_assign_op_nd() {
         let mut a = CartessianND::new(vec![1.0, 0.0]);
         let b = CartessianND::new(vec![1.0, 2.0]);
 
@@ -681,19 +696,25 @@ mod test {
     }
 
     #[test]
-    fn test_scalar_op_nd(){
+    fn test_scalar_op_nd() {
         let a = CartessianND::new(vec![1.0, 2.0]);
         let c = 3f64;
 
         assert_abs_diff_eq!(a.clone() + c, CartessianND::new(vec![4.0, 5.0]));
         assert_abs_diff_eq!(a.clone() - c, CartessianND::new(vec![-2.0, -1.0]));
         assert_abs_diff_eq!(a.clone() * c, CartessianND::new(vec![3.0, 6.0]));
-        assert_abs_diff_eq!(a.clone() / c, CartessianND::new(vec![0.3333333333333333, 0.6666666666666666]));
+        assert_abs_diff_eq!(
+            a.clone() / c,
+            CartessianND::new(vec![0.3333333333333333, 0.6666666666666666])
+        );
 
         assert_abs_diff_eq!(&a + c, CartessianND::new(vec![4.0, 5.0]));
         assert_abs_diff_eq!(&a - c, CartessianND::new(vec![-2.0, -1.0]));
         assert_abs_diff_eq!(&a * c, CartessianND::new(vec![3.0, 6.0]));
-        assert_abs_diff_eq!(&a / c, CartessianND::new(vec![0.3333333333333333, 0.6666666666666666]));
+        assert_abs_diff_eq!(
+            &a / c,
+            CartessianND::new(vec![0.3333333333333333, 0.6666666666666666])
+        );
 
         assert_abs_diff_eq!(c + a.clone(), CartessianND::new(vec![4.0, 5.0]));
         assert_abs_diff_eq!(c - a.clone(), CartessianND::new(vec![2.0, 1.0]));
@@ -707,7 +728,7 @@ mod test {
     }
 
     #[test]
-    fn test_neg_nd(){
+    fn test_neg_nd() {
         let a = CartessianND::new(vec![1.0, 0.0]);
         assert_eq!(-a, CartessianND::new(vec![-1.0, 0.0]));
 
@@ -716,7 +737,7 @@ mod test {
     }
 
     #[test]
-    fn test_abs_diff_eq_nd(){
+    fn test_abs_diff_eq_nd() {
         let a = CartessianND::new(vec![1f64, 2f64.sqrt()]);
         let test = CartessianND::new(vec![1f64, 1.4142135623730951]);
         assert!(a.abs_diff_eq(&test, 1e-10));
@@ -758,5 +779,3 @@ mod test {
     impl_ND_assign_panic!(test_panic_assign_mul, *=);
     impl_ND_assign_panic!(test_panic_assign_div, /=);
 }
-
-
