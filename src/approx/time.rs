@@ -6,9 +6,10 @@
 //! - Nearest Time : Run and Tumble 방식으로 움직이는 입자들의 경우, Run 과정에서는 굳이 짧은 시간 단위로 끊지 않아도 오차 없이 입자들의 운동을 기술할 수 있습니다. 따라서 우리는 각 입자의 Tumble time을 ordered list에 보관하고 가장 근접한 시점으로 바로 이동하는 방식을 채택할 수 있습니다.
 
 // use crate::prelude::*;
-use crate::approx::TimeIterator;
 use crate::approx::TimeDiffIterator;
+use crate::approx::TimeIterator;
 use crate::error::{Error, ErrorCode};
+use serde::{Deserialize, Serialize};
 
 /// Constant step time iterator
 ///
@@ -33,129 +34,132 @@ use crate::error::{Error, ErrorCode};
 ///     // something in here with time
 /// }
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub struct ConstStep{
-    pub dt      : f64,          /// step size of time iteration
-    pub tmax    : f64,          /// Maximum time
-    current     : f64,          //  current time of iterator
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct ConstStep<T> {
+    pub dt: T,
+    /// step size of time iteration
+    pub tmax: T,
+    /// Maximum time
+    current: T, //  current time of iterator
 }
 
-impl ConstStep{
-    /// Return a new ConstStep with given time step
-    ///
-    /// # Examples
-    /// ```
-    /// # use moldybrody::approx::time::ConstStep;
-    /// # use moldybrody::approx::TimeIterator;
-    /// # use assert_approx_eq::assert_approx_eq;
-    /// let const_step = ConstStep::new(1e-3).unwrap();
-    /// assert_approx_eq!(const_step.dt, 1e-3);
-    /// assert_approx_eq!(const_step.current, 0f64);
-    /// assert_approx_eq!(const_step.tmax, std::f64::MAX);
-    /// ```
-    #[allow(dead_code)]
-    pub fn new(dt : f64) -> Result<Self, Error>{
-        if dt < 1e-15{
-            return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
-        }
-        Ok(Self{
-            current : 0f64,
-            dt      : dt,
-            tmax    : std::f64::MAX,
-        })
-    }
+macro_rules! impl_const_step {
+    ($ty : ident) => {
+        impl ConstStep<$ty> {
+            /// Return a new ConstStep with given time step
+            ///
+            /// # Examples
+            /// ```
+            /// # use moldybrody::approx::time::ConstStep;
+            /// # use moldybrody::approx::TimeIterator;
+            /// # use assert_approx_eq::assert_approx_eq;
+            /// let const_step = ConstStep::new(1e-3).unwrap();
+            /// assert_approx_eq!(const_step.dt, 1e-3);
+            /// assert_approx_eq!(const_step.current, 0f64);
+            /// assert_approx_eq!(const_step.tmax, std::f64::MAX);
+            /// ```
+            #[allow(dead_code)]
+            pub fn new(dt: $ty) -> Result<Self, Error> {
+                if dt < 1e-15 as $ty {
+                    return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
+                }
+                Ok(Self {
+                    current: 0 as $ty,
+                    dt: dt,
+                    tmax: std::$ty::MAX,
+                })
+            }
 
-    #[allow(dead_code)]
-    pub fn renew(&mut self){
-        self.current = 0f64;
-    }
+            #[allow(dead_code)]
+            pub fn renew(&mut self) {
+                self.current = 0 as $ty;
+            }
+        }
+
+        impl TimeIterator<$ty> for ConstStep<$ty> {
+            /// # Examples
+            /// ```
+            /// # use moldybrody::approx::time::ConstStep;
+            /// # use moldybrody::approx::TimeIterator;
+            /// # use assert_approx_eq::assert_approx_eq;
+            /// let const_step = ConstStep::new(1e-3).unwrap();
+            /// assert_approx_eq!(const_step.current_time(), 0f64);
+            /// ```
+            fn current_time(&self) -> $ty {
+                self.current
+            }
+
+            /// # Examples
+            /// ```
+            /// # use moldybrody::approx::time::ConstStep;
+            /// # use moldybrody::approx::TimeIterator;
+            /// # use assert_approx_eq::assert_approx_eq;
+            /// let const_step = ConstStep::new(1e-3).unwrap();
+            /// assert_approx_eq!(const_step.dt(), 1e-3);
+            /// ```
+            fn dt(&self) -> $ty {
+                self.dt
+            }
+
+            /// # Examples
+            /// ```
+            /// # use moldybrody::approx::time::ConstStep;
+            /// # use moldybrody::approx::TimeIterator;
+            /// # use assert_approx_eq::assert_approx_eq;
+            /// let mut const_step = ConstStep::new(1e-3).unwrap();
+            /// assert_approx_eq!(const_step.tmax, std::f64::MAX);
+            ///
+            /// const_step.set_tmax(1f64);
+            /// assert_approx_eq!(const_step.tmax, 1f64);
+            ///
+            /// let mut max_t = 0f64;
+            /// for t in const_step{
+            ///     if t > max_t{
+            ///         max_t = t;
+            ///     }
+            /// }
+            /// max_t += 1e-3;
+            /// assert_approx_eq!(max_t, 1f64);
+            /// ```
+            fn set_tmax(&mut self, tmax: $ty) -> Result<(), Error> {
+                if tmax < 0 as $ty {
+                    return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
+                } else if tmax < 1e-10 as $ty {
+                    self.tmax = std::$ty::MAX;
+                } else {
+                    self.tmax = tmax + self.dt * (0.5 as $ty);
+                }
+
+                Ok(())
+            }
+
+            fn into_diff(&self) -> TimeDiffIterator<Self> {
+                TimeDiffIterator {
+                    timeiter: self.clone(),
+                }
+            }
+        }
+
+        impl Iterator for ConstStep<$ty> {
+            type Item = $ty;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let time = self.current;
+                if time <= self.tmax {
+                    self.current += self.dt;
+                    return Some(time);
+                } else {
+                    return None;
+                }
+            }
+        }
+    };
 }
 
-impl TimeIterator<f64> for ConstStep{
-    /// # Examples
-    /// ```
-    /// # use moldybrody::approx::time::ConstStep;
-    /// # use moldybrody::approx::TimeIterator;
-    /// # use assert_approx_eq::assert_approx_eq;
-    /// let const_step = ConstStep::new(1e-3).unwrap();
-    /// assert_approx_eq!(const_step.current_time(), 0f64);
-    /// ```
-    fn current_time(&self) -> f64{
-        self.current
-    }
-
-    /// # Examples
-    /// ```
-    /// # use moldybrody::approx::time::ConstStep;
-    /// # use moldybrody::approx::TimeIterator;
-    /// # use assert_approx_eq::assert_approx_eq;
-    /// let const_step = ConstStep::new(1e-3).unwrap();
-    /// assert_approx_eq!(const_step.dt(), 1e-3);
-    /// ```
-    fn dt(&self) -> f64{
-        self.dt
-    }
-
-
-    /// # Examples
-    /// ```
-    /// # use moldybrody::approx::time::ConstStep;
-    /// # use moldybrody::approx::TimeIterator;
-    /// # use assert_approx_eq::assert_approx_eq;
-    /// let mut const_step = ConstStep::new(1e-3).unwrap();
-    /// assert_approx_eq!(const_step.tmax, std::f64::MAX);
-    ///
-    /// const_step.set_tmax(1f64);
-    /// assert_approx_eq!(const_step.tmax, 1f64);
-    /// 
-    /// let mut max_t = 0f64;
-    /// for t in const_step{
-    ///     if t > max_t{
-    ///         max_t = t;
-    ///     }
-    /// }
-    /// max_t += 1e-3;
-    /// assert_approx_eq!(max_t, 1f64);
-    /// ```
-    fn set_tmax(&mut self, tmax : f64) -> Result<(), Error>{
-        if tmax < 0f64{
-            return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
-        }
-        else if tmax < 1e-10{
-            self.tmax = std::f64::MAX;
-        }
-        else{
-            self.tmax = tmax + self.dt * 0.5;
-        }
-
-        Ok(())
-    }
-
-    fn into_diff(&self) -> TimeDiffIterator<Self>{
-        TimeDiffIterator{
-            timeiter : self.clone(),
-        }
-    }
-}
-
-impl Iterator for ConstStep{
-    type Item = f64;
-
-    fn next(&mut self) -> Option<Self::Item>{
-        let time = self.current;
-        if time <= self.tmax{
-            self.current += self.dt;
-            return Some(time);
-        }
-        else{
-            return None;
-        }
-    }
-}
-
+impl_const_step!(f32);
+impl_const_step!(f64);
 
 // =============================================================================
-
 
 /// Time iterator of which time step size is increasing exponentially
 ///
@@ -183,116 +187,145 @@ impl Iterator for ConstStep{
 ///     // something in here with time
 /// }
 /// ```
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub struct ExponentialStep{
-    pub dt_min  : f64,                  /// initial time step size
-    pub dt_max  : f64,                  /// final time step size
-    pub tmax    : f64,                  /// maximum time for simulation
-    pub length  : usize,                /// increase period of step size
-    current : f64,                      //  current time
-    dt      : f64,                      //  current time step
-    inc     : f64,                      //  increase ratio of step size
-    count   : usize,                    //  count for next time step
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct ExponentialStep<T> {
+    pub dt_min: T,
+    /// initial time step size
+    pub dt_max: T,
+    /// final time step size
+    pub tmax: T,
+    /// maximum time for simulation
+    pub length: usize,
+    /// increase period of step size
+    current: T, //  current time
+    dt: T,        //  current time step
+    inc: T,       //  increase ratio of step size
+    count: usize, //  count for next time step
 }
 
-impl ExponentialStep{
-    #[allow(dead_code)]
-    pub fn new(dt_min : f64, dt_max : f64, length : usize) -> Result<Self, Error>{
-        if dt_min < 1e-10 || dt_min > dt_max || length == 0{
-            return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
-        }
+macro_rules! impl_exp_step {
+    ($ty : ident) => {
+        impl ExponentialStep<$ty> {
+            #[allow(dead_code)]
+            pub fn new(dt_min: $ty, dt_max: $ty, length: usize) -> Result<Self, Error> {
+                if dt_min < 1e-10 as $ty || dt_min > dt_max || length == 0 {
+                    return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
+                }
 
-        let inc : f64;
-        if length == 1{
-            inc = 1.2f64;
-        }
-        else if length < 20{
-            inc = (length as f64) / 2f64;
-        }
-        else{
-            inc = 10f64;       
-        }
+                let inc: $ty;
+                if length == 1 {
+                    inc = 1.2 as $ty;
+                } else if length < 20 {
+                    inc = (length as $ty) / (2 as $ty);
+                } else {
+                    inc = 10 as $ty;
+                }
 
-        Ok(Self{
-            dt_min  : dt_min,
-            dt_max  : dt_max,
-            tmax    : std::f64::MAX,
-            length  : length,
-            current : 0f64,
-            dt      : dt_min,
-            inc     : inc,
-            count   : 0,
-        })
-    }
+                Ok(Self {
+                    dt_min: dt_min,
+                    dt_max: dt_max,
+                    tmax: std::$ty::MAX,
+                    length: length,
+                    current: 0 as $ty,
+                    dt: dt_min,
+                    inc: inc,
+                    count: 0,
+                })
+            }
 
-    #[allow(dead_code)]
-    pub fn renew(&mut self){
-        self.current = 0f64;
-        self.dt = self.dt_min;
-        self.count = 0;
-    }
+            #[allow(dead_code)]
+            pub fn renew(&mut self) {
+                self.current = 0 as $ty;
+                self.dt = self.dt_min;
+                self.count = 0;
+            }
 
-    #[allow(dead_code)]
-    pub fn set_inc(&mut self, inc : f64) -> Result<(), Error>{
-        if inc <= 1f64{
-            return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
-        }
-        self.inc = inc;
-        Ok(())
-    }
-}
-
-
-impl TimeIterator<f64> for ExponentialStep{
-    fn current_time(&self) -> f64{
-        self.current
-    }
-
-    fn dt(&self) -> f64{
-        self.dt
-    }
-
-    fn set_tmax(&mut self, tmax : f64) -> Result<(), Error>{
-        if tmax < 0f64{
-            return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
-        }
-        else if tmax < 1e-15{
-            self.tmax = std::f64::MAX;
-        }
-        else{
-            self.tmax = tmax;
-        }
-        Ok(())
-    }
-
-    fn into_diff(&self) -> TimeDiffIterator<Self>{
-        TimeDiffIterator{
-            timeiter : self.clone(),
-        }
-    }
-}
-
-impl Iterator for ExponentialStep{
-    type Item = f64;
-
-    fn next(&mut self) -> Option<Self::Item>{
-        if self.dt < self.dt_max && self.count == self.length{
-            self.count = 0;
-            self.dt *= self.inc;
-            if self.dt > self.dt_max{
-                self.dt = self.dt_max;
+            #[allow(dead_code)]
+            pub fn set_inc(&mut self, inc: $ty) -> Result<(), Error> {
+                if inc <= 1 as $ty {
+                    return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
+                }
+                self.inc = inc;
+                Ok(())
             }
         }
-        let time = self.current;
-        if time <= self.tmax{
-            self.current += self.dt;
-            self.count += 1;
-            return Some(time);
+
+        impl TimeIterator<$ty> for ExponentialStep<$ty> {
+            fn current_time(&self) -> $ty {
+                self.current
+            }
+
+            fn dt(&self) -> $ty {
+                self.dt
+            }
+
+            fn set_tmax(&mut self, tmax: $ty) -> Result<(), Error> {
+                if tmax < 0 as $ty {
+                    return Err(Error::make_error_syntax(ErrorCode::InvalidArgumentInput));
+                } else if tmax < 1e-15 as $ty {
+                    self.tmax = std::$ty::MAX;
+                } else {
+                    self.tmax = tmax + self.dt_max * (0.5 as $ty);
+                }
+                Ok(())
+            }
+
+            fn into_diff(&self) -> TimeDiffIterator<Self> {
+                TimeDiffIterator {
+                    timeiter: self.clone(),
+                }
+            }
         }
-        else{
-            return None;
+
+        impl Iterator for ExponentialStep<$ty> {
+            type Item = $ty;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.dt < self.dt_max && self.count == self.length {
+                    self.count = 0;
+                    self.dt *= self.inc;
+                    if self.dt > self.dt_max {
+                        self.dt = self.dt_max;
+                    }
+                }
+                let time = self.current;
+                if time <= self.tmax {
+                    self.current += self.dt;
+                    self.count += 1;
+                    return Some(time);
+                } else {
+                    return None;
+                }
+            }
         }
-    }
+    };
 }
 
+impl_exp_step!(f32);
+impl_exp_step!(f64);
 
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_json::{from_str, to_string};
+    #[test]
+    fn test_serde_timeiter() {
+        // Constant Step
+        let mut cs = ConstStep::<f64>::new(1e-3).unwrap();
+        cs.set_tmax(1.0).unwrap();
+        let expected = r#"{"dt":0.001,"tmax":1.0005,"current":0.0}"#;
+        assert_eq!(expected, to_string(&cs).unwrap());
+
+        let expected: ConstStep<f64> = from_str(&expected).unwrap();
+        assert_eq!(cs, expected);
+
+        // Exponential Step
+        let mut exps = ExponentialStep::<f64>::new(1e-3, 1e-2, 10).unwrap();
+        exps.set_tmax(1.0).unwrap();
+        let expected = r#"{"dt_min":0.001,"dt_max":0.01,"tmax":1.005,"length":10,"current":0.0,"dt":0.001,"inc":5.0,"count":0}"#;
+        assert_eq!(expected, to_string(&exps).unwrap());
+
+        let expected: ExponentialStep<f64> = from_str(&expected).unwrap();
+        assert_eq!(exps, expected);
+    }
+}

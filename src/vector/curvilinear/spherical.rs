@@ -10,9 +10,10 @@ use std::convert::From;
 use std::convert::TryInto;
 use std::fmt::Debug;
 
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Spherical<T> {
     pub radius: T,
     pub theta: T,
@@ -42,7 +43,10 @@ where
     return t;
 }
 
-impl<T> Spherical<T> {
+impl<T> Spherical<T>
+where
+    T: Scalar,
+{
     pub fn new(radius: T, theta: T, phi: T) -> Self
     where
         T: AbsDiffEq<Epsilon = T>
@@ -113,7 +117,7 @@ impl<T> Spherical<T> {
 
 impl<T> Default for Spherical<T>
 where
-    T: Default,
+    T: Default + Scalar,
 {
     fn default() -> Self {
         Self {
@@ -652,7 +656,7 @@ impl_spherical_op!(Sub, -, sub);
 
 impl<T> Mul<T> for Spherical<T>
 where
-    T: MulAssign + Clone,
+    T: Scalar + MulAssign + Clone,
 {
     type Output = Spherical<T>;
 
@@ -664,7 +668,7 @@ where
 
 impl<'a, T> Mul<T> for &'a Spherical<T>
 where
-    T: MulAssign + Clone,
+    T: Scalar + MulAssign + Clone,
 {
     type Output = Spherical<T>;
 
@@ -677,7 +681,7 @@ where
 
 impl<T> MulAssign<T> for Spherical<T>
 where
-    T: MulAssign,
+    T: Scalar + MulAssign,
 {
     fn mul_assign(&mut self, rhs: T) {
         self.radius *= rhs;
@@ -686,7 +690,7 @@ where
 
 impl<T> Div<T> for Spherical<T>
 where
-    T: DivAssign + Clone,
+    T: Scalar + DivAssign + Clone,
 {
     type Output = Spherical<T>;
 
@@ -698,7 +702,7 @@ where
 
 impl<'a, T> Div<T> for &'a Spherical<T>
 where
-    T: DivAssign + Clone,
+    T: Scalar + DivAssign + Clone,
 {
     type Output = Spherical<T>;
 
@@ -711,7 +715,7 @@ where
 
 impl<T> DivAssign<T> for Spherical<T>
 where
-    T: DivAssign,
+    T: Scalar + DivAssign,
 {
     fn div_assign(&mut self, rhs: T) {
         self.radius /= rhs;
@@ -1180,6 +1184,7 @@ mod test {
     use super::*;
     use crate::vector::{Cartessian, CartessianND};
     use approx::assert_abs_diff_eq;
+    use serde_json::{from_str, to_string};
     use std::f64::consts::PI;
 
     #[test]
@@ -1374,5 +1379,15 @@ mod test {
 
         assert_abs_diff_eq!(a.norm_l1(), 2f64.sqrt());
         assert_abs_diff_eq!(a.norm_l2(), 1f64);
+    }
+
+    #[test]
+    fn test_serde_spherical() {
+        let a: Spherical<f64> = Spherical::new(2f64, 3.1415f64, 0f64);
+        let expected = r#"{"radius":2.0,"theta":3.1415,"phi":0.0}"#;
+        assert_eq!(expected, to_string(&a).unwrap());
+
+        let expected: Spherical<f64> = from_str(&expected).unwrap();
+        assert_eq!(a, expected);
     }
 }

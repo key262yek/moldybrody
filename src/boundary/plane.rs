@@ -1,42 +1,39 @@
-
-
-
 // use crate::boundary::BoundaryCondition;
 // use crate::boundary::AfterMove;
-use crate::vector::basic::Map;
-use std::fmt::Debug;
-use crate::boundary::Periodic;
 use crate::boundary::NonPeriodic;
-use crate::format_convert::{Brief, ConvertBrief};
-use std::fmt::Formatter;
-use std::fmt::{self, Display};
-use std::fmt::LowerExp;
-use std::ops::Rem;
-use crate::{prelude::Error, vector::Dim};
+use crate::boundary::Periodic;
 use crate::boundary::{FloatBoundary, IntBoundary};
-use std::convert::TryInto;
-use std::ops::Div;
+use crate::vector::basic::Map;
 use crate::vector::product::Norm;
+use crate::{prelude::Error, vector::Dim};
 use approx::AbsDiffEq;
+use std::convert::TryInto;
+use std::fmt::Debug;
+use std::fmt::Formatter;
+use std::fmt::LowerExp;
+use std::fmt::{self, Display};
+use std::ops::Div;
+use std::ops::Rem;
 
 use crate::vector::product::Dot;
+use crate::vector::Scalar;
 use crate::vector::Vector;
-use std::ops::Neg;
-use crate::vector::arithmetic::Scalar;
 use crate::vector::{Cartessian, CartessianND};
+use serde::{Deserialize, Serialize};
+use std::ops::Neg;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Direction{
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Direction {
     Positive,
     Negative,
 }
 
-impl Display for Direction{
+impl Display for Direction {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self{
+        match self {
             &Direction::Positive => {
                 write!(f, "Positive")
-            },
+            }
             &Direction::Negative => {
                 write!(f, "Negative")
             }
@@ -44,20 +41,16 @@ impl Display for Direction{
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct SimplePlane<T>{
-    idx : usize,
-    pos : T,
-    dir_in : Direction,
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SimplePlane<T> {
+    idx: usize,
+    pos: T,
+    dir_in: Direction,
 }
 
-impl<T> SimplePlane<T>{
-    pub fn new(idx : usize, pos : T, dir_in : Direction) -> Self{
-        Self{
-            idx,
-            pos,
-            dir_in,
-        }
+impl<T> SimplePlane<T> {
+    pub fn new(idx: usize, pos: T, dir_in: Direction) -> Self {
+        Self { idx, pos, dir_in }
     }
 }
 
@@ -576,79 +569,72 @@ impl_int_simpleplane!(i64);
 impl_int_simpleplane!(i128);
 impl_int_simpleplane!(isize);
 
-
-
-
-
-
-impl<T : Display> Display for SimplePlane<T>{
+impl<T: Display> Display for SimplePlane<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.dir_in{
-            Direction::Positive => write!(f, "SimplePlane at x[{}] = {} with positive to inside", self.idx, self.pos),
-            Direction::Negative => write!(f, "SimplePlane at x[{}] = {} with negative to inside", self.idx, self.pos),
+        match self.dir_in {
+            Direction::Positive => write!(
+                f,
+                "SimplePlane at x[{}] = {} with positive to inside",
+                self.idx, self.pos
+            ),
+            Direction::Negative => write!(
+                f,
+                "SimplePlane at x[{}] = {} with negative to inside",
+                self.idx, self.pos
+            ),
         }
     }
 }
 
-impl<T : LowerExp> LowerExp for SimplePlane<T>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        match self.dir_in{
+impl<T: LowerExp> LowerExp for SimplePlane<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.dir_in {
             Direction::Positive => {
                 write!(f, "SimplePlane at x[{}] = ", self.idx)?;
                 LowerExp::fmt(&self.pos, f)?;
                 write!(f, " with positive to inside")
-            },
+            }
             Direction::Negative => {
                 write!(f, "SimplePlane at x[{}] = ", self.idx)?;
                 LowerExp::fmt(&self.pos, f)?;
                 write!(f, " with negative to inside")
-            },
+            }
         }
     }
 }
 
-
-
-impl<T : Display> Display for Brief<SimplePlane<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{}", self.0.idx, self.0.pos, self.0.dir_in)
-    }
-}
-
-impl<T : LowerExp> LowerExp for Brief<SimplePlane<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},", self.0.idx)?;
-        LowerExp::fmt(&self.0.pos, f)?;
-        write!(f, ",{}", self.0.dir_in)
-    }
-}
-
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Plane<V : Vector>{
-    normal_vec : V,  // direction : inside
-    constant : <V as Vector>::Item,
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Plane<V: Vector> {
+    normal_vec: V, // direction : inside
+    constant: <V as Vector>::Item,
 }
 
 impl<'a, V> Plane<V>
-    where V : Vector + Clone + Norm + Div<<V as Norm>::Output, Output = V> + Dot<&'a V, Output = <V as Vector>::Item> + 'a,
-          <V as Vector>::Item : Clone + Div<<V as Norm>::Output, Output = <V as Vector>::Item>,
-          <V as Norm>::Output : Copy{
-    pub fn new(normal_vec : &V, constant : <V as Vector>::Item) -> Self{
+where
+    V: Vector
+        + Clone
+        + Norm
+        + Div<<V as Norm>::Output, Output = V>
+        + Dot<&'a V, Output = <V as Vector>::Item>
+        + 'a,
+    <V as Vector>::Item: Clone + Div<<V as Norm>::Output, Output = <V as Vector>::Item> + Debug,
+    <V as Norm>::Output: Copy,
+{
+    pub fn new(normal_vec: &V, constant: <V as Vector>::Item) -> Self {
         let n = normal_vec.norm_l2();
-        Self{
-            normal_vec : (*normal_vec).clone() / n,
-            constant : constant / n,
+        Self {
+            normal_vec: (*normal_vec).clone() / n,
+            constant: constant / n,
         }
     }
 
-    pub fn from_point(normal_vec : &'a V, point : &'a V) -> Self{
+    pub fn from_point(normal_vec: &'a V, point: &'a V) -> Self {
         let n = normal_vec.norm_l2();
         let vec = normal_vec.clone() / n;
         let c = vec.dot(point);
-        Self{
-            normal_vec : vec,
-            constant : c / n,
+        Self {
+            normal_vec: vec,
+            constant: c / n,
         }
     }
 }
@@ -657,149 +643,194 @@ impl<V: Vector> NonPeriodic for Plane<V> {}
 
 macro_rules! impl_float_plane {
     ($ty : ident) => {
-        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for Plane<Cartessian<$ty, N>>{
-            fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
+        impl<const N: usize> FloatBoundary<Cartessian<$ty, N>> for Plane<Cartessian<$ty, N>> {
+            fn check_inclusion(&self, pos: &Cartessian<$ty, N>) -> bool {
                 let d = self.normal_vec.dot(pos);
 
                 d >= self.constant
             }
 
-            fn normal_at(&self, pos : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
+            fn normal_at(&self, pos: &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
                 let d = self.normal_vec.dot(pos);
-                if self.constant.abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self
+                    .constant
+                    .abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon())
+                {
                     return Some(self.normal_vec.clone());
                 } else {
                     return None;
                 }
             }
 
-            fn normal_at_unsafe(&self, _pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N>{
+            fn normal_at_unsafe(&self, _pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 self.normal_vec.clone()
             }
 
-            fn find_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let destination = pos + movement;
-                if self.check_inclusion(&destination){
+                if self.check_inclusion(&destination) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(pos + movement * t);
             }
 
-            fn find_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
+            fn find_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
                 let destination = pos + movement;
-                if self.check_inclusion(&destination){
+                if self.check_inclusion(&destination) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(pos + movement * t);
             }
 
-            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn ratio_to_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let destination = pos + movement;
-                if self.check_inclusion(&destination){
+                if self.check_inclusion(&destination) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(t);
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
                 let destination = pos + movement;
-                if self.check_inclusion(&destination){
+                if self.check_inclusion(&destination) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(t);
             }
         }
 
-        impl FloatBoundary<CartessianND<$ty>> for Plane<CartessianND<$ty>>{
-            fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
+        impl FloatBoundary<CartessianND<$ty>> for Plane<CartessianND<$ty>> {
+            fn check_inclusion(&self, pos: &CartessianND<$ty>) -> bool {
                 let d = self.normal_vec.dot(pos);
 
                 d >= self.constant
             }
 
-            fn normal_at(&self, pos : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
+            fn normal_at(&self, pos: &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
                 let d = self.normal_vec.dot(pos);
-                if self.constant.abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self
+                    .constant
+                    .abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon())
+                {
                     return Some(self.normal_vec.clone());
                 } else {
                     return None;
                 }
             }
 
-            fn normal_at_unsafe(&self, _pos : &CartessianND<$ty>) -> CartessianND<$ty>{
+            fn normal_at_unsafe(&self, _pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 self.normal_vec.clone()
             }
 
-            fn find_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
-
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y);
-                if self.check_inclusion(&result){
+                if self.check_inclusion(&result) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 result.clone_from(pos);
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y * t);
                 return Some(result);
             }
 
-            fn find_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
+            fn find_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y);
-                if self.check_inclusion(&result){
+                if self.check_inclusion(&result) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 result.clone_from(pos);
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y * t);
                 return Some(result);
             }
 
-            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn ratio_to_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y);
-                if self.check_inclusion(&result){
+                if self.check_inclusion(&result) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(t);
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, move |x, y| *x = *x + *y);
-                if self.check_inclusion(&result){
+                if self.check_inclusion(&result) {
                     return None;
                 }
 
-                let t = - (self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
+                let t = -(self.normal_vec.dot(pos) + self.constant) / self.normal_vec.dot(movement);
                 return Some(t);
             }
         }
@@ -809,73 +840,26 @@ macro_rules! impl_float_plane {
 impl_float_plane!(f32);
 impl_float_plane!(f64);
 
-
-impl<T, V> Display for Plane<V>
-    where V : Vector<Item = T> + Display + ConvertBrief,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Plane normal to ({}) with constant {}", self.normal_vec.brief(), self.constant)
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SimplePlanePair<T> {
+    idx: usize,
+    pos: [T; 2],
 }
 
-impl<T, V> LowerExp for Plane<V>
-    where V : Vector<Item = T> + LowerExp + ConvertBrief,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "Plane normal to (")?;
-        LowerExp::fmt(&self.normal_vec.brief(), f)?;
-        write!(f, ") with constant ")?;
-        LowerExp::fmt(&self.constant, f)
-    }
-}
-
-impl<V, T> Display for Brief<Plane<V>>
-    where V : Vector<Item = T> + Display + ConvertBrief,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{}", &self.0.normal_vec.brief(), &self.0.constant)
-    }
-}
-
-impl<V, T> LowerExp for Brief<Plane<V>>
-    where V : Vector<Item = T> + LowerExp + ConvertBrief,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        LowerExp::fmt(&self.0.normal_vec.brief(), f)?;
-        write!(f, ",")?;
-        LowerExp::fmt(&self.0.constant, f)
-    }
-}
-
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct SimplePlanePair<T>{
-    idx : usize,
-    pos : [T; 2],
-}
-
-impl<T : PartialOrd + Copy + AbsDiffEq> SimplePlanePair<T>{
-    pub fn new(idx : usize, pos : [T; 2]) -> Option<Self>{
-        if pos[0].abs_diff_eq(&pos[1], <T as AbsDiffEq>::default_epsilon()){
+impl<T: PartialOrd + Copy + AbsDiffEq> SimplePlanePair<T> {
+    pub fn new(idx: usize, pos: [T; 2]) -> Option<Self> {
+        if pos[0].abs_diff_eq(&pos[1], <T as AbsDiffEq>::default_epsilon()) {
             return None;
         }
 
-        let (a, b) = match pos[0] > pos[1]{
+        let (a, b) = match pos[0] > pos[1] {
             true => (pos[1], pos[0]),
             false => (pos[0], pos[1]),
         };
 
-        Some(Self{
-            idx,
-            pos : [a, b],
-        })
+        Some(Self { idx, pos: [a, b] })
     }
 }
-
 
 macro_rules! impl_float_simpleplanepair {
     ($ty : ident) => {
@@ -1347,156 +1331,153 @@ impl_int_simpleplanepair!(i64);
 impl_int_simpleplanepair!(i128);
 impl_int_simpleplanepair!(isize);
 
-
-impl<T : Display> Display for SimplePlanePair<T>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "SimplePlanePair between x[{}] = {} and {}", self.idx, self.pos[0], self.pos[1])
-    }
-}
-
-impl<T : LowerExp> LowerExp for SimplePlanePair<T>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "SimplePlanePair between x[{}] = ", self.idx)?;
-        LowerExp::fmt(&self.pos[0], f)?;
-        write!(f, " and ")?;
-        LowerExp::fmt(&self.pos[1], f)
-    }
-}
-
-
-impl<T : Display> Display for Brief<SimplePlanePair<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{}", &self.0.idx, &self.0.pos[0], &self.0.pos[1])
-    }
-}
-
-impl<T : LowerExp> LowerExp for Brief<SimplePlanePair<T>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},", &self.0.idx)?;
-        LowerExp::fmt(&self.0.pos[0], f)?;
-        write!(f, ",")?;
-        LowerExp::fmt(&self.0.pos[1], f)
-    }
-}
-
-
-
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct PlanePair<V : Vector>{
-    normal_vec : V,
-    constant : [<V as Vector>::Item; 2],
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlanePair<V: Vector> {
+    normal_vec: V,
+    constant: [<V as Vector>::Item; 2],
 }
 
 impl<V> PlanePair<V>
-    where V : Vector + Clone + Norm + Div<<V as Norm>::Output, Output = V>,
-         <V as Vector>::Item : PartialOrd + AbsDiffEq + Div<<V as Norm>::Output, Output = <V as Vector>::Item>,
-         <V as Norm>::Output : Copy{
-    pub fn new(normal_vec : V, constant : [<V as Vector>::Item; 2]) -> Option<Self>{
-        if constant[0].abs_diff_eq(&constant[1], <<V as Vector>::Item as AbsDiffEq>::default_epsilon()){
+where
+    V: Vector + Clone + Norm + Div<<V as Norm>::Output, Output = V>,
+    <V as Vector>::Item:
+        PartialOrd + AbsDiffEq + Div<<V as Norm>::Output, Output = <V as Vector>::Item>,
+    <V as Norm>::Output: Copy,
+{
+    pub fn new(normal_vec: V, constant: [<V as Vector>::Item; 2]) -> Option<Self> {
+        if constant[0].abs_diff_eq(
+            &constant[1],
+            <<V as Vector>::Item as AbsDiffEq>::default_epsilon(),
+        ) {
             return None;
         }
 
         let n = normal_vec.norm_l2();
 
-        let (a, b) = match constant[0] > constant[1]{
+        let (a, b) = match constant[0] > constant[1] {
             true => (constant[1], constant[0]),
             false => (constant[0], constant[1]),
         };
-        Some(Self{
-            normal_vec : normal_vec.clone() / n,
-            constant : [a / n, b / n],
+        Some(Self {
+            normal_vec: normal_vec.clone() / n,
+            constant: [a / n, b / n],
         })
     }
 }
 
-
-
 macro_rules! impl_float_planepair {
     ($ty : ident) => {
-        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>>{
-            fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
+        impl<const N: usize> FloatBoundary<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>> {
+            fn check_inclusion(&self, pos: &Cartessian<$ty, N>) -> bool {
                 let d = self.normal_vec.dot(pos);
 
                 self.constant[0] <= d && d <= self.constant[1]
             }
 
-            fn normal_at(&self, pos : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
+            fn normal_at(&self, pos: &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
                 let d = self.normal_vec.dot(pos);
 
-                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return Some(self.normal_vec.clone());
-                } else if self.constant[1].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                } else if self.constant[1].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return Some(-self.normal_vec.clone());
                 } else {
                     return None;
                 }
             }
 
-            fn normal_at_unsafe(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N>{
+            fn normal_at_unsafe(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let d = self.normal_vec.dot(pos);
 
-                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return self.normal_vec.clone();
                 } else {
                     return -self.normal_vec.clone();
                 }
             }
 
-            fn find_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let d = self.normal_vec.dot(pos + movement);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(pos + movement * t);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
-                    return Some(pos + movement * t);
-                } else {
-                    return None;
-                }
-            }
-
-            fn find_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
-                let d = self.normal_vec.dot(pos + movement);
-                if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
-                    return Some(pos + movement * t);
-                } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(pos + movement * t);
                 } else {
                     return None;
                 }
             }
 
-            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                let d = self.normal_vec.dot(pos + movement);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
+                    return Some(pos + movement * t);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
+                    return Some(pos + movement * t);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let d = self.normal_vec.dot(pos + movement);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else {
                     return None;
                 }
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty>{
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
                 let d = self.normal_vec.dot(pos + movement);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else {
                     return None;
@@ -1504,15 +1485,15 @@ macro_rules! impl_float_planepair {
             }
         }
 
-        impl<const N : usize> Periodic<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>>{
-            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+        impl<const N: usize> Periodic<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>> {
+            fn find_pair(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let d = self.normal_vec.dot(pos);
                 let mut res = pos.clone();
 
-                if d < self.constant[0]{
+                if d < self.constant[0] {
                     let dx = self.constant[1] - self.constant[0];
                     res += dx * &self.normal_vec;
-                } else if self.constant[1] < d{
+                } else if self.constant[1] < d {
                     let dx = self.constant[1] - self.constant[0];
                     res -= dx * &self.normal_vec;
                 }
@@ -1520,82 +1501,71 @@ macro_rules! impl_float_planepair {
                 return res;
             }
 
-            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+            fn find_pair_mut(&self, pos: &mut Cartessian<$ty, N>) {
                 let d = self.normal_vec.dot(&*pos);
 
-                if d < self.constant[0]{
+                if d < self.constant[0] {
                     let dx = self.constant[1] - self.constant[0];
                     *pos += dx * &self.normal_vec;
-                } else if self.constant[1] < d{
+                } else if self.constant[1] < d {
                     let dx = self.constant[1] - self.constant[0];
                     *pos -= dx * &self.normal_vec;
                 }
             }
         }
 
-        impl FloatBoundary<CartessianND<$ty>> for PlanePair<CartessianND<$ty>>{
-            fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
+        impl FloatBoundary<CartessianND<$ty>> for PlanePair<CartessianND<$ty>> {
+            fn check_inclusion(&self, pos: &CartessianND<$ty>) -> bool {
                 let d = self.normal_vec.dot(pos);
 
                 self.constant[0] <= d && d <= self.constant[1]
             }
 
-            fn normal_at(&self, pos : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
+            fn normal_at(&self, pos: &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
                 let d = self.normal_vec.dot(pos);
 
-                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return Some(self.normal_vec.clone());
-                } else if self.constant[1].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                } else if self.constant[1].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return Some(-self.normal_vec.clone());
                 } else {
                     return None;
                 }
             }
 
-            fn normal_at_unsafe(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty>{
+            fn normal_at_unsafe(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let d = self.normal_vec.dot(pos);
 
-                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()){
+                if self.constant[0].abs_diff_eq(&d, <$ty as AbsDiffEq>::default_epsilon()) {
                     return self.normal_vec.clone();
                 } else {
                     return -self.normal_vec.clone();
                 }
             }
 
-            fn find_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, |x, y| *x = *x + *y);
                 let d = self.normal_vec.dot(&result);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     result.clone_from(pos);
                     result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                     return Some(result);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
-                    result.clone_from(pos);
-                    result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
-                    return Some(result);
-                } else {
-                    return None;
-                }
-            }
-
-            fn find_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
-                let mut result = pos.clone();
-                result.zip_mut_with(movement, |x, y| *x = *x + *y);
-                let d = self.normal_vec.dot(&result);
-                if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
-                    result.clone_from(pos);
-                    result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
-                    return Some(result);
-                } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     result.clone_from(pos);
                     result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                     return Some(result);
@@ -1604,34 +1574,73 @@ macro_rules! impl_float_planepair {
                 }
             }
 
-            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
+                let mut result = pos.clone();
+                result.zip_mut_with(movement, |x, y| *x = *x + *y);
+                let d = self.normal_vec.dot(&result);
+                if d < self.constant[0] {
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
+                    result.clone_from(pos);
+                    result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
+                    return Some(result);
+                } else if self.constant[1] < d {
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
+                    result.clone_from(pos);
+                    result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
+                    return Some(result);
+                } else {
+                    return None;
+                }
+            }
+
+            fn ratio_to_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, |x, y| *x = *x + *y);
                 let d = self.normal_vec.dot(&result);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else {
                     return None;
                 }
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty>{
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
                 let mut result = pos.clone();
                 result.zip_mut_with(movement, |x, y| *x = *x + *y);
                 let d = self.normal_vec.dot(&result);
                 if d < self.constant[0] {
-                    let t = (self.constant[0] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[0] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else if self.constant[1] < d {
-                    let t = (self.constant[1] - self.normal_vec.dot(pos)) / self.normal_vec.dot(movement);
+                    let t = (self.constant[1] - self.normal_vec.dot(pos))
+                        / self.normal_vec.dot(movement);
                     return Some(t);
                 } else {
                     return None;
@@ -1639,15 +1648,15 @@ macro_rules! impl_float_planepair {
             }
         }
 
-        impl Periodic<CartessianND<$ty>> for PlanePair<CartessianND<$ty>>{
-            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+        impl Periodic<CartessianND<$ty>> for PlanePair<CartessianND<$ty>> {
+            fn find_pair(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let d = self.normal_vec.dot(pos);
                 let mut res = pos.clone();
 
-                if d < self.constant[0]{
+                if d < self.constant[0] {
                     let dx = self.constant[1] - self.constant[0];
                     res.zip_mut_with(&self.normal_vec, |x, y| *x = *x + *y * dx);
-                } else if self.constant[1] < d{
+                } else if self.constant[1] < d {
                     let dx = self.constant[1] - self.constant[0];
                     res.zip_mut_with(&self.normal_vec, |x, y| *x = *x - *y * dx);
                 }
@@ -1655,13 +1664,13 @@ macro_rules! impl_float_planepair {
                 return res;
             }
 
-            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+            fn find_pair_mut(&self, pos: &mut CartessianND<$ty>) {
                 let d = self.normal_vec.dot(&*pos);
 
-                if d < self.constant[0]{
+                if d < self.constant[0] {
                     let dx = self.constant[1] - self.constant[0];
                     pos.zip_mut_with(&self.normal_vec, |x, y| *x = *x + *y * dx);
-                } else if self.constant[1] < d{
+                } else if self.constant[1] < d {
                     let dx = self.constant[1] - self.constant[0];
                     pos.zip_mut_with(&self.normal_vec, |x, y| *x = *x - *y * dx);
                 }
@@ -1673,492 +1682,461 @@ macro_rules! impl_float_planepair {
 impl_float_planepair!(f32);
 impl_float_planepair!(f64);
 
-impl<T, V> Display for PlanePair<V>
-    where V : Vector<Item = T> + Display + ConvertBrief,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PlanePair normal to ({}) between constant {} and {}", self.normal_vec.brief(), self.constant[0], self.constant[1])
-    }
-}
-
-impl<T, V> LowerExp for PlanePair<V>
-    where V : Vector<Item = T> + LowerExp+ ConvertBrief,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "PlanePair normal to (")?;
-        LowerExp::fmt(&self.normal_vec.brief(), f)?;
-        write!(f, ") between constant ")?;
-        LowerExp::fmt(&self.constant[0], f)?;
-        write!(f, " and ")?;
-        LowerExp::fmt(&self.constant[1], f)
-    }
-}
-
-
-impl<V, T> Display for Brief<PlanePair<V>>
-    where V : Vector<Item = T> + Display+ ConvertBrief,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{},{}", &self.0.normal_vec.brief(), &self.0.constant[0], &self.0.constant[1])
-    }
-}
-
-impl<V, T> LowerExp for Brief<PlanePair<V>>
-    where V : Vector<Item = T> + LowerExp+ ConvertBrief,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        LowerExp::fmt(&self.0.normal_vec.brief(), f)?;
-        write!(f, ",")?;
-        LowerExp::fmt(&self.0.constant[0], f)?;
-        write!(f, ",")?;
-        LowerExp::fmt(&self.0.constant[1], f)
-    }
-}
-
-
 #[derive(Clone, Debug, PartialEq)]
-pub struct SimpleBox<T, const N : usize>{
-    planes : [SimplePlanePair<T>; N],
+pub struct SimpleBox<T, const N: usize> {
+    pub planes: [SimplePlanePair<T>; N],
 }
 
-impl<T, const N : usize> SimpleBox<T, N>{
-    pub fn new(planes : [SimplePlanePair<T>; N]) -> Result<Self, Error>
-        where T : Clone{
+impl<T, const N: usize> SimpleBox<T, N> {
+    pub fn new(planes: [SimplePlanePair<T>; N]) -> Result<Self, Error>
+    where
+        T: Clone,
+    {
         use itertools::Itertools;
 
-        let count = planes.iter().map(|x| x.idx)
-                               .unique().count();
+        let count = planes.iter().map(|x| x.idx).unique().count();
         if count != N {
-            return Err(Error::make_error_syntax(crate::prelude::ErrorCode::InvalidArgumentInput));
+            return Err(Error::make_error_syntax(
+                crate::prelude::ErrorCode::InvalidArgumentInput,
+            ));
         }
 
-        Ok(Self{
-            planes : planes.clone()
+        Ok(Self {
+            planes: planes.clone(),
         })
     }
 
-    pub fn from_pairs(consts : [[T; 2]; N]) -> Self
-        where T : PartialOrd + Copy + AbsDiffEq + Debug{
-        let planes : [SimplePlanePair<T>; N] = consts.iter().enumerate().map(|(idx, x)| SimplePlanePair::new(idx, *x).unwrap()).collect::<Vec<SimplePlanePair<T>>>().try_into().unwrap();
-        Self{
-            planes
-        }
+    pub fn from_pairs(consts: [[T; 2]; N]) -> Self
+    where
+        T: PartialOrd + Copy + AbsDiffEq + Debug,
+    {
+        let planes: [SimplePlanePair<T>; N] = consts
+            .iter()
+            .enumerate()
+            .map(|(idx, x)| SimplePlanePair::new(idx, *x).unwrap())
+            .collect::<Vec<SimplePlanePair<T>>>()
+            .try_into()
+            .unwrap();
+        Self { planes }
     }
 
-    pub fn cube_with_center<'a, V>(center : &'a V, half : T) -> Result<Self, Error>
-        where V : Vector<Item = T> + Dim<N>,
-              &'a V : IntoIterator<Item = &'a T>,
-              T : Scalar + PartialOrd + AbsDiffEq + Rem<Output = T>{
-
-        if center.dim() != N  || half < T::zero(){
-            return Err(Error::make_error_syntax(crate::prelude::ErrorCode::InvalidDimension));
+    pub fn cube_with_center<'a, V>(center: &'a V, half: T) -> Result<Self, Error>
+    where
+        V: Vector<Item = T> + Dim<N>,
+        &'a V: IntoIterator<Item = &'a T>,
+        T: Scalar + PartialOrd + AbsDiffEq + Rem<Output = T>,
+    {
+        if center.dim() != N || half < T::zero() {
+            return Err(Error::make_error_syntax(
+                crate::prelude::ErrorCode::InvalidDimension,
+            ));
         }
 
-        let planes : [SimplePlanePair<T>; N]
-                = (0..N).zip(center.into_iter())
-                        .map(|(idx, y)| SimplePlanePair::new(idx, [*y - half, *y + half]).unwrap())
-                        .collect::<Vec<SimplePlanePair<T>>>()
-                        .try_into().unwrap();
-        Ok(Self{
-            planes,
-        })
+        let planes: [SimplePlanePair<T>; N] = (0..N)
+            .zip(center.into_iter())
+            .map(|(idx, y)| SimplePlanePair::new(idx, [*y - half, *y + half]).unwrap())
+            .collect::<Vec<SimplePlanePair<T>>>()
+            .try_into()
+            .unwrap();
+        Ok(Self { planes })
     }
 }
 
-impl<T, const N : usize> FloatBoundary<Cartessian<T, N>> for SimpleBox<T, N>
-    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : FloatBoundary<Cartessian<T, N>>{
-    fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
+impl<T, const N: usize> FloatBoundary<Cartessian<T, N>> for SimpleBox<T, N>
+where
+    T: Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+    SimplePlanePair<T>: FloatBoundary<Cartessian<T, N>>,
+{
+    fn check_inclusion(&self, pos: &Cartessian<T, N>) -> bool {
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
 
-    fn normal_at(&self, pos : &Cartessian<T, N>) -> Option<Cartessian<T, N>>{
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn normal_at(&self, pos: &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn normal_at_unsafe(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
-      for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return v},
-                None => {},
+    fn normal_at_unsafe(&self, pos: &Cartessian<T, N>) -> Cartessian<T, N> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return v,
+                None => {}
             }
         }
         panic!("Position is not on the boundaries");
     }
 
-    fn find_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        if !self.check_inclusion(pos){
+    fn find_intersect(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn find_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn find_intersect_unsafe(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
-        if !self.check_inclusion(pos){
+    fn ratio_to_intersect(&self, pos: &Cartessian<T, N>, movement: &Cartessian<T, N>) -> Option<T> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn ratio_to_intersect_unsafe(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<T> {
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 }
 
-impl<T, const N : usize> Periodic<Cartessian<T, N>> for SimpleBox<T, N>
-    where T : Scalar,
-          SimplePlanePair<T> : Periodic<Cartessian<T, N>>{
-    fn find_pair(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
+impl<T, const N: usize> Periodic<Cartessian<T, N>> for SimpleBox<T, N>
+where
+    T: Scalar,
+    SimplePlanePair<T>: Periodic<Cartessian<T, N>>,
+{
+    fn find_pair(&self, pos: &Cartessian<T, N>) -> Cartessian<T, N> {
         let mut result = pos.clone();
-        for planepair in &self.planes{
+        for planepair in &self.planes {
             planepair.find_pair_mut(&mut result);
         }
         return result;
     }
 
-    fn find_pair_mut(&self, pos : &mut Cartessian<T, N>) {
-        for planepair in &self.planes{
+    fn find_pair_mut(&self, pos: &mut Cartessian<T, N>) {
+        for planepair in &self.planes {
             planepair.find_pair_mut(pos);
         }
     }
 }
 
-
-
-impl<T, const N : usize> IntBoundary<Cartessian<T, N>> for SimpleBox<T, N>
-    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : IntBoundary<Cartessian<T, N>>{
-    fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
+impl<T, const N: usize> IntBoundary<Cartessian<T, N>> for SimpleBox<T, N>
+where
+    T: Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+    SimplePlanePair<T>: IntBoundary<Cartessian<T, N>>,
+{
+    fn check_inclusion(&self, pos: &Cartessian<T, N>) -> bool {
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
 
-    fn normal_at(&self, pos : &Cartessian<T, N>) -> Option<Cartessian<T, N>>{
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn normal_at(&self, pos: &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn normal_at_unsafe(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
-      for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return v},
-                None => {},
+    fn normal_at_unsafe(&self, pos: &Cartessian<T, N>) -> Cartessian<T, N> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return v,
+                None => {}
             }
         }
         panic!("Position is not on the boundaries");
     }
 
-    fn find_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        if !self.check_inclusion(pos){
+    fn find_intersect(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn find_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn find_intersect_unsafe(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 }
 
-impl<T, const N : usize> FloatBoundary<CartessianND<T>> for SimpleBox<T, N>
-    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : FloatBoundary<CartessianND<T>>{
-    fn check_inclusion(&self, pos : &CartessianND<T>) -> bool{
+impl<T, const N: usize> FloatBoundary<CartessianND<T>> for SimpleBox<T, N>
+where
+    T: Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+    SimplePlanePair<T>: FloatBoundary<CartessianND<T>>,
+{
+    fn check_inclusion(&self, pos: &CartessianND<T>) -> bool {
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
 
-    fn normal_at(&self, pos : &CartessianND<T>) -> Option<CartessianND<T>>{
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn normal_at(&self, pos: &CartessianND<T>) -> Option<CartessianND<T>> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn normal_at_unsafe(&self, pos : &CartessianND<T>) -> CartessianND<T> {
-      for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return v},
-                None => {},
+    fn normal_at_unsafe(&self, pos: &CartessianND<T>) -> CartessianND<T> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return v,
+                None => {}
             }
         }
         panic!("Position is not on the boundaries");
     }
 
-    fn find_intersect(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
-        if !self.check_inclusion(pos){
+    fn find_intersect(
+        &self,
+        pos: &CartessianND<T>,
+        movement: &CartessianND<T>,
+    ) -> Option<CartessianND<T>> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn find_intersect_unsafe(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn find_intersect_unsafe(
+        &self,
+        pos: &CartessianND<T>,
+        movement: &CartessianND<T>,
+    ) -> Option<CartessianND<T>> {
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<T> {
-        if !self.check_inclusion(pos){
+    fn ratio_to_intersect(&self, pos: &CartessianND<T>, movement: &CartessianND<T>) -> Option<T> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<T> {
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn ratio_to_intersect_unsafe(
+        &self,
+        pos: &CartessianND<T>,
+        movement: &CartessianND<T>,
+    ) -> Option<T> {
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 }
 
-impl<T, const N : usize> Periodic<CartessianND<T>> for SimpleBox<T, N>
-    where T : Scalar,
-          SimplePlanePair<T> : Periodic<CartessianND<T>>{
-    fn find_pair(&self, pos : &CartessianND<T>) -> CartessianND<T> {
+impl<T, const N: usize> Periodic<CartessianND<T>> for SimpleBox<T, N>
+where
+    T: Scalar,
+    SimplePlanePair<T>: Periodic<CartessianND<T>>,
+{
+    fn find_pair(&self, pos: &CartessianND<T>) -> CartessianND<T> {
         let mut result = pos.clone();
-        for planepair in &self.planes{
+        for planepair in &self.planes {
             planepair.find_pair_mut(&mut result);
         }
         return result;
     }
 
-    fn find_pair_mut(&self, pos : &mut CartessianND<T>) {
-        for planepair in &self.planes{
+    fn find_pair_mut(&self, pos: &mut CartessianND<T>) {
+        for planepair in &self.planes {
             planepair.find_pair_mut(pos);
         }
     }
 }
 
-
-impl<T, const N : usize> IntBoundary<CartessianND<T>> for SimpleBox<T, N>
-    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          SimplePlanePair<T> : IntBoundary<CartessianND<T>>{
-    fn check_inclusion(&self, pos : &CartessianND<T>) -> bool{
+impl<T, const N: usize> IntBoundary<CartessianND<T>> for SimpleBox<T, N>
+where
+    T: Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+    SimplePlanePair<T>: IntBoundary<CartessianND<T>>,
+{
+    fn check_inclusion(&self, pos: &CartessianND<T>) -> bool {
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
 
-    fn normal_at(&self, pos : &CartessianND<T>) -> Option<CartessianND<T>>{
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn normal_at(&self, pos: &CartessianND<T>) -> Option<CartessianND<T>> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn normal_at_unsafe(&self, pos : &CartessianND<T>) -> CartessianND<T> {
-      for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return v},
-                None => {},
+    fn normal_at_unsafe(&self, pos: &CartessianND<T>) -> CartessianND<T> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return v,
+                None => {}
             }
         }
         panic!("Position is not on the boundaries");
     }
 
-    fn find_intersect(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
-        if !self.check_inclusion(pos){
+    fn find_intersect(
+        &self,
+        pos: &CartessianND<T>,
+        movement: &CartessianND<T>,
+    ) -> Option<CartessianND<T>> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn find_intersect_unsafe(&self, pos : &CartessianND<T>, movement : &CartessianND<T>) -> Option<CartessianND<T>> {
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn find_intersect_unsafe(
+        &self,
+        pos: &CartessianND<T>,
+        movement: &CartessianND<T>,
+    ) -> Option<CartessianND<T>> {
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 }
 
-
-impl<T : Clone + Display, const N : usize> Display for SimpleBox<T, N>{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SimpleBox enveloped in plane pairs ({}", &self.planes[0].brief())?;
-        for plane in self.planes.iter().skip(1){
-            write!(f, "), ({}", plane.brief())?;
-        }
-        write!(f, ")")
-    }
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Cube<V: Vector> {
+    center: V,
+    radius: <V as Vector>::Item,
 }
 
-impl<T : Clone + Display +  LowerExp, const N : usize> LowerExp for SimpleBox<T, N>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "SimpleBox enveloped in plane pairs (")?;
-        LowerExp::fmt(&self.planes[0].brief(), f)?;
-        for plane in self.planes.iter().skip(1){
-            write!(f, "), (")?;
-            LowerExp::fmt(&plane.brief(), f)?;
-        }
-        write!(f, ")")
-    }
-}
-
-
-impl<T : Clone + Display, const N : usize> Display for Brief<SimpleBox<T, N>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "({}", &self.0.planes[0].brief())?;
-        for plane in self.0.planes.iter().skip(1){
-            write!(f, "),({}", plane.brief())?;
-        }
-        write!(f, ")")
-    }
-}
-
-impl<T : Clone + LowerExp, const N : usize> LowerExp for Brief<SimpleBox<T, N>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "(")?;
-        LowerExp::fmt(&self.0.planes[0].brief(), f)?;
-        for plane in self.0.planes.iter().skip(1){
-            write!(f, "),(", )?;
-            LowerExp::fmt(&plane.brief(), f)?;
-        }
-        write!(f, ")")
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Cube<V : Vector>{
-    center : V,
-    radius : <V as Vector>::Item,
-}
-
-impl<V : Vector> Cube<V>{
-    pub fn new(center : &V, radius : <V as Vector>::Item) -> Self
-        where V : Clone, <V as Vector>::Item : Clone{
-        Self{
-            center : center.clone(),
-            radius : radius.clone(),
+impl<V: Vector> Cube<V> {
+    pub fn new(center: &V, radius: <V as Vector>::Item) -> Self
+    where
+        V: Clone,
+        <V as Vector>::Item: Clone,
+    {
+        Self {
+            center: center.clone(),
+            radius: radius.clone(),
         }
     }
 }
-
 
 macro_rules! impl_float_cube {
     ($ty : ident) => {
-        impl<const N : usize> FloatBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
-            fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
-                for (c, x) in self.center.into_iter().zip(pos){
-                    if (*x - *c) > self.radius || (*x - *c) < -self.radius{
-                        return false
+        impl<const N: usize> FloatBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>> {
+            fn check_inclusion(&self, pos: &Cartessian<$ty, N>) -> bool {
+                for (c, x) in self.center.into_iter().zip(pos) {
+                    if (*x - *c) > self.radius || (*x - *c) < -self.radius {
+                        return false;
                     }
                 }
                 return true;
             }
 
-            fn normal_at(&self, pos : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
+            fn normal_at(&self, pos: &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
                 let mut vec = Cartessian::<$ty, N>::default();
                 let epsilon = <$ty as AbsDiffEq>::default_epsilon();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if (*x - *c).abs_diff_eq(&self.radius, epsilon){
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if (*x - *c).abs_diff_eq(&self.radius, epsilon) {
                         vec[idx] = -1 as $ty;
                         return Some(vec);
-                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon){
+                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon) {
                         vec[idx] = 1 as $ty;
                         return Some(vec);
                     }
@@ -2166,14 +2144,14 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn normal_at_unsafe(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+            fn normal_at_unsafe(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let mut vec = Cartessian::<$ty, N>::default();
                 let epsilon = <$ty as AbsDiffEq>::default_epsilon();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if (*x - *c).abs_diff_eq(&self.radius, epsilon){
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if (*x - *c).abs_diff_eq(&self.radius, epsilon) {
                         vec[idx] = -1 as $ty;
                         return vec;
-                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon){
+                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon) {
                         vec[idx] = 1 as $ty;
                         return vec;
                     }
@@ -2181,17 +2159,23 @@ macro_rules! impl_float_cube {
                 panic!("Position is not on the boundaries");
             }
 
-            fn find_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
-                for idx in 0..N{
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(pos + movement * t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(pos + movement * t);
                     }
@@ -2199,13 +2183,17 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn find_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
-                for idx in 0..N{
+            fn find_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(pos + movement * t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(pos + movement * t);
                     }
@@ -2213,17 +2201,23 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn ratio_to_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn ratio_to_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
-                for idx in 0..N{
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(t);
                     }
@@ -2231,13 +2225,17 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<$ty> {
-                for idx in 0..N{
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<$ty> {
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(t);
                     }
@@ -2246,11 +2244,11 @@ macro_rules! impl_float_cube {
             }
         }
 
-        impl<const N : usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
-            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+        impl<const N: usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>> {
+            fn find_pair(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let mut result = pos.clone();
                 result.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius;
@@ -2259,9 +2257,9 @@ macro_rules! impl_float_cube {
                 return result;
             }
 
-            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+            fn find_pair_mut(&self, pos: &mut Cartessian<$ty, N>) {
                 pos.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius;
@@ -2270,32 +2268,32 @@ macro_rules! impl_float_cube {
             }
         }
 
-        impl FloatBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
-            fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
-                if self.center.dim() != pos.dim(){
+        impl FloatBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>> {
+            fn check_inclusion(&self, pos: &CartessianND<$ty>) -> bool {
+                if self.center.dim() != pos.dim() {
                     panic!("Dimensionality of plane and position vector are not compatible.");
                 }
 
-                for (c, x) in self.center.into_iter().zip(pos){
-                    if *x > *c + self.radius || *x < *c -self.radius{
-                        return false
+                for (c, x) in self.center.into_iter().zip(pos) {
+                    if *x > *c + self.radius || *x < *c - self.radius {
+                        return false;
                     }
                 }
                 return true;
             }
 
-            fn normal_at(&self, pos : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
-                if self.center.dim() != pos.dim(){
+            fn normal_at(&self, pos: &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
+                if self.center.dim() != pos.dim() {
                     panic!("Dimensionality of plane and position vector are not compatible.");
                 }
 
                 let mut vec = CartessianND::<$ty>::zeros(pos.dim());
                 let epsilon = <$ty as AbsDiffEq>::default_epsilon();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if (*x - *c).abs_diff_eq(&self.radius, epsilon){
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if (*x - *c).abs_diff_eq(&self.radius, epsilon) {
                         vec[idx] = -1 as $ty;
                         return Some(vec);
-                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon){
+                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon) {
                         vec[idx] = 1 as $ty;
                         return Some(vec);
                     }
@@ -2303,14 +2301,14 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn normal_at_unsafe(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+            fn normal_at_unsafe(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let mut vec = CartessianND::<$ty>::zeros(pos.dim());
                 let epsilon = <$ty as AbsDiffEq>::default_epsilon();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if (*x - *c).abs_diff_eq(&self.radius, epsilon){
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if (*x - *c).abs_diff_eq(&self.radius, epsilon) {
                         vec[idx] = -1 as $ty;
                         return vec;
-                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon){
+                    } else if (*x - *c).abs_diff_eq(&-self.radius, epsilon) {
                         vec[idx] = 1 as $ty;
                         return vec;
                     }
@@ -2318,20 +2316,26 @@ macro_rules! impl_float_cube {
                 panic!("Position is not on the boundaries");
             }
 
-            fn find_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         let mut result = pos.clone();
                         result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         let mut result = pos.clone();
                         result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
@@ -2341,16 +2345,20 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn find_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
+            fn find_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         let mut result = pos.clone();
                         result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
                         return Some(result);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         let mut result = pos.clone();
                         result.zip_mut_with(movement, |x, y| *x = *x + *y * t);
@@ -2360,18 +2368,24 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn ratio_to_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn ratio_to_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(t);
                     }
@@ -2379,14 +2393,18 @@ macro_rules! impl_float_cube {
                 return None;
             }
 
-            fn ratio_to_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<$ty> {
+            fn ratio_to_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<$ty> {
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius{
+                    if p + m < c - self.radius {
                         let t = (c - self.radius - p) / m;
                         return Some(t);
-                    } else if p + m > c + self.radius{
+                    } else if p + m > c + self.radius {
                         let t = (c + self.radius - p) / m;
                         return Some(t);
                     }
@@ -2395,11 +2413,11 @@ macro_rules! impl_float_cube {
             }
         }
 
-        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
-            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>> {
+            fn find_pair(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let mut result = pos.clone();
                 result.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius;
@@ -2408,9 +2426,9 @@ macro_rules! impl_float_cube {
                 return result;
             }
 
-            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+            fn find_pair_mut(&self, pos: &mut CartessianND<$ty>) {
                 pos.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius;
@@ -2426,23 +2444,23 @@ impl_float_cube!(f64);
 
 macro_rules! impl_int_cube {
     ($ty : ident) => {
-        impl<const N : usize> IntBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
-            fn check_inclusion(&self, pos : &Cartessian<$ty, N>) -> bool{
-                for (c, x) in self.center.into_iter().zip(pos){
-                    if (*x - *c) > self.radius || (*x - *c) < -self.radius{
-                        return false
+        impl<const N: usize> IntBoundary<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>> {
+            fn check_inclusion(&self, pos: &Cartessian<$ty, N>) -> bool {
+                for (c, x) in self.center.into_iter().zip(pos) {
+                    if (*x - *c) > self.radius || (*x - *c) < -self.radius {
+                        return false;
                     }
                 }
                 return true;
             }
 
-            fn normal_at(&self, pos : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>>{
+            fn normal_at(&self, pos: &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
                 let mut vec = Cartessian::<$ty, N>::default();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if *x == *c + &self.radius{
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if *x == *c + &self.radius {
                         vec[idx] = -1 as $ty;
                         return Some(vec);
-                    } else if *x == *c - &self.radius{
+                    } else if *x == *c - &self.radius {
                         vec[idx] = 1 as $ty;
                         return Some(vec);
                     }
@@ -2450,13 +2468,13 @@ macro_rules! impl_int_cube {
                 return None;
             }
 
-            fn normal_at_unsafe(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+            fn normal_at_unsafe(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let mut vec = Cartessian::<$ty, N>::default();
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if *x == *c + &self.radius{
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if *x == *c + &self.radius {
                         vec[idx] = -1 as $ty;
                         return vec;
-                    } else if *x == *c - &self.radius{
+                    } else if *x == *c - &self.radius {
                         vec[idx] = 1 as $ty;
                         return vec;
                     }
@@ -2464,24 +2482,34 @@ macro_rules! impl_int_cube {
                 panic!("Position is not on the boundaries");
             }
 
-            fn find_intersect(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
-                for idx in 0..N{
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius || p + m > c + self.radius{
+                    if p + m < c - self.radius || p + m > c + self.radius {
                         return Some(pos.clone());
                     }
                 }
                 return None;
             }
 
-            fn find_intersect_unsafe(&self, pos : &Cartessian<$ty, N>, movement : &Cartessian<$ty, N>) -> Option<Cartessian<$ty, N>> {
-                for idx in 0..N{
+            fn find_intersect_unsafe(
+                &self,
+                pos: &Cartessian<$ty, N>,
+                movement: &Cartessian<$ty, N>,
+            ) -> Option<Cartessian<$ty, N>> {
+                for idx in 0..N {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius || p + m > c + self.radius{
+                    if p + m < c - self.radius || p + m > c + self.radius {
                         return Some(pos.clone());
                     }
                 }
@@ -2490,11 +2518,11 @@ macro_rules! impl_int_cube {
             }
         }
 
-        impl<const N : usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>>{
-            fn find_pair(&self, pos : &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
+        impl<const N: usize> Periodic<Cartessian<$ty, N>> for Cube<Cartessian<$ty, N>> {
+            fn find_pair(&self, pos: &Cartessian<$ty, N>) -> Cartessian<$ty, N> {
                 let mut result = pos.clone();
                 result.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius + 1 as $ty;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius + 1 as $ty;
@@ -2503,9 +2531,9 @@ macro_rules! impl_int_cube {
                 return result;
             }
 
-            fn find_pair_mut(&self, pos : &mut Cartessian<$ty, N>) {
+            fn find_pair_mut(&self, pos: &mut Cartessian<$ty, N>) {
                 pos.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius + 1 as $ty;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius + 1 as $ty;
@@ -2514,31 +2542,31 @@ macro_rules! impl_int_cube {
             }
         }
 
-        impl IntBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
-            fn check_inclusion(&self, pos : &CartessianND<$ty>) -> bool{
-                if self.center.dim() != pos.dim(){
+        impl IntBoundary<CartessianND<$ty>> for Cube<CartessianND<$ty>> {
+            fn check_inclusion(&self, pos: &CartessianND<$ty>) -> bool {
+                if self.center.dim() != pos.dim() {
                     panic!("Dimensionality of plane and position vector are not compatible.");
                 }
 
-                for (c, x) in self.center.into_iter().zip(pos){
-                    if *x > *c + self.radius || *x < *c -self.radius{
-                        return false
+                for (c, x) in self.center.into_iter().zip(pos) {
+                    if *x > *c + self.radius || *x < *c - self.radius {
+                        return false;
                     }
                 }
                 return true;
             }
 
-            fn normal_at(&self, pos : &CartessianND<$ty>) -> Option<CartessianND<$ty>>{
-                if self.center.dim() != pos.dim(){
+            fn normal_at(&self, pos: &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
+                if self.center.dim() != pos.dim() {
                     panic!("Dimensionality of plane and position vector are not compatible.");
                 }
 
                 let mut vec = CartessianND::<$ty>::zeros(pos.dim());
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if *x == *c + &self.radius{
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if *x == *c + &self.radius {
                         vec[idx] = -1 as $ty;
                         return Some(vec);
-                    } else if *x == *c - &self.radius{
+                    } else if *x == *c - &self.radius {
                         vec[idx] = 1 as $ty;
                         return Some(vec);
                     }
@@ -2546,13 +2574,13 @@ macro_rules! impl_int_cube {
                 return None;
             }
 
-            fn normal_at_unsafe(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+            fn normal_at_unsafe(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let mut vec = CartessianND::<$ty>::zeros(pos.dim());
-                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate(){
-                    if *x == *c + &self.radius{
+                for (idx, (c, x)) in self.center.into_iter().zip(pos).enumerate() {
+                    if *x == *c + &self.radius {
                         vec[idx] = -1 as $ty;
                         return vec;
-                    } else if *x == *c - &self.radius{
+                    } else if *x == *c - &self.radius {
                         vec[idx] = 1 as $ty;
                         return vec;
                     }
@@ -2560,26 +2588,36 @@ macro_rules! impl_int_cube {
                 panic!("Position is not on the boundaries");
             }
 
-            fn find_intersect(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
-                if !self.check_inclusion(pos){
-                    panic!("State cannot live outside of system boundary. Move from outside occurs");
+            fn find_intersect(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
+                if !self.check_inclusion(pos) {
+                    panic!(
+                        "State cannot live outside of system boundary. Move from outside occurs"
+                    );
                 }
 
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius || p + m > c + self.radius{
+                    if p + m < c - self.radius || p + m > c + self.radius {
                         return Some(pos.clone());
                     }
                 }
                 return None;
             }
 
-            fn find_intersect_unsafe(&self, pos : &CartessianND<$ty>, movement : &CartessianND<$ty>) -> Option<CartessianND<$ty>> {
+            fn find_intersect_unsafe(
+                &self,
+                pos: &CartessianND<$ty>,
+                movement: &CartessianND<$ty>,
+            ) -> Option<CartessianND<$ty>> {
                 let n = pos.dim();
-                for idx in 0..n{
+                for idx in 0..n {
                     let (p, m, c) = (pos[idx], movement[idx], self.center[idx]);
-                    if p + m < c -self.radius || p + m > c + self.radius{
+                    if p + m < c - self.radius || p + m > c + self.radius {
                         return Some(pos.clone());
                     }
                 }
@@ -2587,11 +2625,11 @@ macro_rules! impl_int_cube {
             }
         }
 
-        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>>{
-            fn find_pair(&self, pos : &CartessianND<$ty>) -> CartessianND<$ty> {
+        impl Periodic<CartessianND<$ty>> for Cube<CartessianND<$ty>> {
+            fn find_pair(&self, pos: &CartessianND<$ty>) -> CartessianND<$ty> {
                 let mut result = pos.clone();
                 result.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius + 1 as $ty;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius + 1 as $ty;
@@ -2600,9 +2638,9 @@ macro_rules! impl_int_cube {
                 return result;
             }
 
-            fn find_pair_mut(&self, pos : &mut CartessianND<$ty>) {
+            fn find_pair_mut(&self, pos: &mut CartessianND<$ty>) {
                 pos.zip_mut_with(&self.center, |x, y| {
-                    if *x < *y - self.radius{
+                    if *x < *y - self.radius {
                         *x += 2 as $ty * self.radius + 1 as $ty;
                     } else if *y + self.radius < *x {
                         *x -= 2 as $ty * self.radius + 1 as $ty;
@@ -2620,217 +2658,149 @@ impl_int_cube!(i64);
 impl_int_cube!(i128);
 impl_int_cube!(isize);
 
-impl<V, T> Display for Cube<V>
-    where V : Vector<Item = T> + ConvertBrief + Display,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "Cube has center at ({}) with radius {}", self.center.brief(), self.radius)
-    }
-}
-
-impl<V, T> LowerExp for Cube<V>
-    where V : Vector<Item = T> + ConvertBrief + LowerExp,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "Cube has center at (")?;
-        LowerExp::fmt(&self.center.brief(), f)?;
-        write!(f, ") with radius ")?;
-        LowerExp::fmt(&self.radius, f)
-    }
-}
-
-impl<V, T> Display for Brief<Cube<V>>
-    where V : Vector<Item = T> + ConvertBrief + Display,
-          Brief<V> : Display,
-          T : Display{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{},{}", &self.0.center.brief(), &self.0.radius)
-    }
-}
-
-impl<V, T> LowerExp for Brief<Cube<V>>
-    where V : Vector<Item = T> + ConvertBrief + LowerExp,
-          Brief<V> : LowerExp,
-          T : LowerExp{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        LowerExp::fmt(&self.0.center.brief(), f)?;
-        write!(f, ",")?;
-        LowerExp::fmt(&self.0.radius, f)
-    }
-}
-
-
 #[derive(Clone, Debug, PartialEq)]
-pub struct Parallelogram<T : Scalar, const N : usize>{
-    planes : [PlanePair<Cartessian<T, N>>; N],
+pub struct Parallelogram<T: Scalar, const N: usize> {
+    pub planes: [PlanePair<Cartessian<T, N>>; N],
 }
 
-impl<T : Scalar, const N : usize> Parallelogram<T, N>{
-    pub fn new(planes : [PlanePair<Cartessian<T, N>>; N]) -> Result<Self, Error>
-        where T : Clone + AbsDiffEq,
-             <T as AbsDiffEq>::Epsilon : Clone{
-
-        for i in 0..N-1 {
-            for j in i + 1..N{
-                if planes[i].normal_vec.abs_diff_eq(&planes[j].normal_vec, <T as AbsDiffEq>::default_epsilon()){
-                    return Err(Error::make_error_syntax(crate::prelude::ErrorCode::InvalidArgumentInput));
+impl<T: Scalar, const N: usize> Parallelogram<T, N> {
+    pub fn new(planes: [PlanePair<Cartessian<T, N>>; N]) -> Result<Self, Error>
+    where
+        T: Clone + AbsDiffEq,
+        <T as AbsDiffEq>::Epsilon: Clone,
+    {
+        for i in 0..N - 1 {
+            for j in i + 1..N {
+                if planes[i]
+                    .normal_vec
+                    .abs_diff_eq(&planes[j].normal_vec, <T as AbsDiffEq>::default_epsilon())
+                {
+                    return Err(Error::make_error_syntax(
+                        crate::prelude::ErrorCode::InvalidArgumentInput,
+                    ));
                 }
             }
         }
 
-        Ok(Self{
-            planes : planes.clone()
+        Ok(Self {
+            planes: planes.clone(),
         })
     }
 }
 
-impl<T, const N : usize> FloatBoundary<Cartessian<T, N>> for Parallelogram<T, N>
-    where T : Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
-          PlanePair<Cartessian<T, N>> : FloatBoundary<Cartessian<T, N>>{
-    fn check_inclusion(&self, pos : &Cartessian<T, N>) -> bool{
+impl<T, const N: usize> FloatBoundary<Cartessian<T, N>> for Parallelogram<T, N>
+where
+    T: Scalar + Neg<Output = T> + PartialOrd + AbsDiffEq,
+    PlanePair<Cartessian<T, N>>: FloatBoundary<Cartessian<T, N>>,
+{
+    fn check_inclusion(&self, pos: &Cartessian<T, N>) -> bool {
         self.planes.iter().all(|p| p.check_inclusion(pos))
     }
 
-    fn normal_at(&self, pos : &Cartessian<T, N>) -> Option<Cartessian<T, N>>{
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn normal_at(&self, pos: &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn normal_at_unsafe(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
-        for plane in &self.planes{
-            match plane.normal_at(pos){
-                Some(v) => {return v},
-                None => {},
+    fn normal_at_unsafe(&self, pos: &Cartessian<T, N>) -> Cartessian<T, N> {
+        for plane in &self.planes {
+            match plane.normal_at(pos) {
+                Some(v) => return v,
+                None => {}
             }
         }
         panic!("Position is not on the boundaries");
     }
 
-    fn find_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        if !self.check_inclusion(pos){
+    fn find_intersect(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn find_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<Cartessian<T, N>> {
-        for plane in &self.planes{
-            match plane.find_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn find_intersect_unsafe(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<Cartessian<T, N>> {
+        for plane in &self.planes {
+            match plane.find_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
-        if !self.check_inclusion(pos){
+    fn ratio_to_intersect(&self, pos: &Cartessian<T, N>, movement: &Cartessian<T, N>) -> Option<T> {
+        if !self.check_inclusion(pos) {
             panic!("State cannot live outside of system boundary. Move from outside occurs");
-        } else if self.check_inclusion(&(pos + movement)){
+        } else if self.check_inclusion(&(pos + movement)) {
             return None;
         }
 
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 
-    fn ratio_to_intersect_unsafe(&self, pos : &Cartessian<T, N>, movement : &Cartessian<T, N>) -> Option<T> {
-        for plane in &self.planes{
-            match plane.ratio_to_intersect_unsafe(pos, movement){
-                Some(v) => {return Some(v)},
-                None => {},
+    fn ratio_to_intersect_unsafe(
+        &self,
+        pos: &Cartessian<T, N>,
+        movement: &Cartessian<T, N>,
+    ) -> Option<T> {
+        for plane in &self.planes {
+            match plane.ratio_to_intersect_unsafe(pos, movement) {
+                Some(v) => return Some(v),
+                None => {}
             }
         }
         return None;
     }
 }
 
-impl<T, const N : usize> Periodic<Cartessian<T, N>> for Parallelogram<T, N>
-    where T : Scalar,
-          PlanePair<Cartessian<T, N>> : Periodic<Cartessian<T, N>>{
-    fn find_pair(&self, pos : &Cartessian<T, N>) -> Cartessian<T, N> {
+impl<T, const N: usize> Periodic<Cartessian<T, N>> for Parallelogram<T, N>
+where
+    T: Scalar,
+    PlanePair<Cartessian<T, N>>: Periodic<Cartessian<T, N>>,
+{
+    fn find_pair(&self, pos: &Cartessian<T, N>) -> Cartessian<T, N> {
         let mut result = pos.clone();
-        for planepair in &self.planes{
+        for planepair in &self.planes {
             planepair.find_pair_mut(&mut result);
         }
         return result;
     }
 
-    fn find_pair_mut(&self, pos : &mut Cartessian<T, N>) {
-        for planepair in &self.planes{
+    fn find_pair_mut(&self, pos: &mut Cartessian<T, N>) {
+        for planepair in &self.planes {
             planepair.find_pair_mut(pos);
         }
     }
 }
-
-
-impl<T : Display + LowerExp + Scalar, const N : usize> Display for Parallelogram<T, N>{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Parallelogram enveloped in plane pairs ({}", &self.planes[0].brief())?;
-        for plane in self.planes.iter().skip(1){
-            write!(f, "), ({}", plane.brief())?;
-        }
-        write!(f, ")")
-    }
-}
-
-impl<T : Display + LowerExp + Scalar, const N : usize> LowerExp for Parallelogram<T, N>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result{
-        write!(f, "Parallelogram enveloped in plane pairs (")?;
-        LowerExp::fmt(&self.planes[0].brief(), f)?;
-        for plane in self.planes.iter().skip(1){
-            write!(f, "), (")?;
-            LowerExp::fmt(&plane.brief(), f)?;
-        }
-        write!(f, ")")
-    }
-}
-
-
-impl<T : Clone + Display + Scalar, const N : usize> Display for Brief<Parallelogram<T, N>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "({}", &self.0.planes[0].brief())?;
-        for plane in self.0.planes.iter().skip(1){
-            write!(f, "),({}", plane.brief())?;
-        }
-        write!(f, ")")
-    }
-}
-
-impl<T : Clone + LowerExp + Scalar + Display, const N : usize> LowerExp for Brief<Parallelogram<T, N>>{
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "(")?;
-        LowerExp::fmt(&self.0.planes[0].brief(), f)?;
-        for plane in self.0.planes.iter().skip(1){
-            write!(f, "),(", )?;
-            LowerExp::fmt(&plane.brief(), f)?;
-        }
-        write!(f, ")")
-    }
-}
-
-
 
 #[cfg(test)]
 mod test {
@@ -2839,7 +2809,7 @@ mod test {
     use approx::assert_abs_diff_eq;
 
     #[test]
-    fn test_simpleplane(){
+    fn test_simpleplane() {
         let plane = SimplePlane::new(0, 1f64, Direction::Positive);
 
         // float 2D
@@ -2858,15 +2828,21 @@ mod test {
 
         a[0] = 2f64;
         let mut movement = Cartessian2D::new([-2f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(Cartessian2D::new([1f64; 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1f64; 2])));
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([1f64; 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([1f64; 2]))
+        );
 
         movement[0] = -0.5f64;
         assert_eq!(plane.find_intersect(&a, &movement), None);
         assert_eq!(plane.find_intersect_unsafe(&a, &movement), None);
 
         // float ND
-        let mut a : CartessianND<f64> = CartessianND::new(vec![2f64; 2]);
+        let mut a: CartessianND<f64> = CartessianND::new(vec![2f64; 2]);
         assert_eq!(plane.check_inclusion(&a), true);
         assert_eq!(plane.normal_at(&a), None);
 
@@ -2876,13 +2852,25 @@ mod test {
 
         a[0] = 1f64;
         assert_eq!(plane.check_inclusion(&a), true);
-        assert_eq!(plane.normal_at(&a), Some(CartessianND::new(vec![1f64, 0.0])));
-        assert_eq!(plane.normal_at_unsafe(&a), CartessianND::new(vec![1f64, 0.0]));
+        assert_eq!(
+            plane.normal_at(&a),
+            Some(CartessianND::new(vec![1f64, 0.0]))
+        );
+        assert_eq!(
+            plane.normal_at_unsafe(&a),
+            CartessianND::new(vec![1f64, 0.0])
+        );
 
         a[0] = 2f64;
         let mut movement = CartessianND::new(vec![-2f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(CartessianND::new(vec![1f64; 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![1f64; 2])));
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![1f64; 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![1f64; 2]))
+        );
 
         movement[0] = -0.5f64;
         assert_eq!(plane.find_intersect(&a, &movement), None);
@@ -2890,7 +2878,7 @@ mod test {
 
         let plane = SimplePlane::new(0, 1, Direction::Positive);
         // int 2D
-        let mut a : Cartessian<i32, 2> = Cartessian2D::new([2; 2]);
+        let mut a: Cartessian<i32, 2> = Cartessian2D::new([2; 2]);
         assert_eq!(plane.check_inclusion(&a), true);
         assert_eq!(plane.normal_at(&a), None);
 
@@ -2905,8 +2893,14 @@ mod test {
 
         a[0] = 1;
         let mut movement = Cartessian2D::new([-1, 0]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(Cartessian2D::new([1, 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1, 2])));
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([1, 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([1, 2]))
+        );
 
         movement[0] = 0;
         assert_eq!(plane.find_intersect(&a, &movement), None);
@@ -2928,24 +2922,23 @@ mod test {
 
         a[0] = 1;
         let mut movement = CartessianND::new(vec![-1, 0]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(CartessianND::new(vec![1, 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![1, 2])));
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![1, 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![1, 2]))
+        );
 
         movement[0] = 0;
         assert_eq!(plane.find_intersect(&a, &movement), None);
         assert_eq!(plane.find_intersect_unsafe(&a, &movement), None);
-
-
-        // display
-        assert_eq!(format!("{}", plane), "SimplePlane at x[0] = 1 with positive to inside");
-        assert_eq!(format!("{:.3e}", plane), "SimplePlane at x[0] = 1.000e0 with positive to inside");
-        assert_eq!(format!("{}", plane.brief()), "0,1,Positive");
-        assert_eq!(format!("{:.3e}", plane.brief()), "0,1.000e0,Positive");
     }
 
     #[test]
     #[should_panic]
-    fn test_simpleplane_panic(){
+    fn test_simpleplane_panic() {
         let plane = SimplePlane::new(3, 1f64, Direction::Positive);
 
         let a = Cartessian2D::new([2f64; 2]);
@@ -2954,7 +2947,7 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_simpleplane_find_itersect(){
+    fn test_simpleplane_find_itersect() {
         let plane = SimplePlane::new(0, 1f64, Direction::Positive);
 
         let a = Cartessian2D::new([0f64; 2]);
@@ -2962,10 +2955,8 @@ mod test {
         plane.find_intersect(&a, &movement);
     }
 
-
-
     #[test]
-    fn test_plane(){
+    fn test_plane() {
         // 2d
         let plane = Plane::new(&Cartessian2D::new([1f64, 1f64]), 0f64);
         assert_abs_diff_eq!(plane.normal_vec, Cartessian2D::new([1.0 / 2f64.sqrt(); 2]));
@@ -2980,18 +2971,32 @@ mod test {
 
         a[0] = -2f64;
         assert_eq!(plane.check_inclusion(&a), true);
-        assert_eq!(plane.normal_at(&a), Some(Cartessian2D::new([1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(plane.normal_at_unsafe(&a), Cartessian2D::new([1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            plane.normal_at(&a),
+            Some(Cartessian2D::new([1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            plane.normal_at_unsafe(&a),
+            Cartessian2D::new([1.0 / 2f64.sqrt(); 2])
+        );
 
         a[0] = 2f64;
         let movement = Cartessian2D::new([-3f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(Cartessian2D::new([0f64; 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0f64; 2])));
-
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0f64; 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0f64; 2]))
+        );
 
         // nd
         let plane = Plane::new(&CartessianND::new(vec![1f64, 1f64]), 0f64);
-        assert_abs_diff_eq!(plane.normal_vec, CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]));
+        assert_abs_diff_eq!(
+            plane.normal_vec,
+            CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])
+        );
 
         let mut a = CartessianND::new(vec![2f64; 2]);
         assert_eq!(plane.check_inclusion(&a), true);
@@ -3003,23 +3008,30 @@ mod test {
 
         a[0] = -2f64;
         assert_eq!(plane.check_inclusion(&a), true);
-        assert_eq!(plane.normal_at(&a), Some(CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(plane.normal_at_unsafe(&a), CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            plane.normal_at(&a),
+            Some(CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            plane.normal_at_unsafe(&a),
+            CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])
+        );
 
         a[0] = 2f64;
         let movement = CartessianND::new(vec![-3f64; 2]);
-        assert_eq!(plane.find_intersect(&a, &movement), Some(CartessianND::new(vec![0f64; 2])));
-        assert_eq!(plane.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![0f64; 2])));
-
-        assert_eq!(format!("{}", plane), "Plane normal to (0.7071067811865475:0.7071067811865475) with constant 0");
-        assert_eq!(format!("{:.3e}", plane), "Plane normal to (7.071e-1:7.071e-1) with constant 0.000e0");
-        assert_eq!(format!("{}", plane.brief()), "0.7071067811865475:0.7071067811865475,0");
-        assert_eq!(format!("{:.3e}", plane.brief()), "7.071e-1:7.071e-1,0.000e0");
+        assert_eq!(
+            plane.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![0f64; 2]))
+        );
+        assert_eq!(
+            plane.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![0f64; 2]))
+        );
     }
 
     #[test]
     #[should_panic]
-    fn test_plane_panic(){
+    fn test_plane_panic() {
         let plane = Plane::new(&CartessianND::new(vec![3f64; 3]), 0f64);
 
         let a = CartessianND::new(vec![2f64; 2]);
@@ -3028,7 +3040,7 @@ mod test {
 
     #[test]
     #[should_panic]
-    fn test_plane_intersect(){
+    fn test_plane_intersect() {
         let plane = Plane::new(&CartessianND::new(vec![3f64; 2]), 0f64);
 
         let a = CartessianND::new(vec![-2f64; 2]);
@@ -3037,7 +3049,7 @@ mod test {
     }
 
     #[test]
-    fn test_simpleplanepair(){
+    fn test_simpleplanepair() {
         // Float
         let planepair = SimplePlanePair::new(0, [1f64, 0f64]).unwrap();
         assert_abs_diff_eq!(planepair.pos[0], 0f64);
@@ -3049,8 +3061,14 @@ mod test {
 
         a[0] = 1f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(Cartessian2D::new([-1f64, 0.0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), Cartessian2D::new([-1f64, 0.0]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(Cartessian2D::new([-1f64, 0.0]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            Cartessian2D::new([-1f64, 0.0])
+        );
 
         a[0] = 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
@@ -3058,8 +3076,14 @@ mod test {
 
         a[0] = 0f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(Cartessian2D::new([1f64, 0.0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), Cartessian2D::new([1f64, 0.0]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(Cartessian2D::new([1f64, 0.0]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            Cartessian2D::new([1f64, 0.0])
+        );
 
         a[0] = -1f64;
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3067,11 +3091,23 @@ mod test {
 
         a[0] = 0.5f64;
         let mut movement = Cartessian2D::new([-2f64; 2]);
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(Cartessian2D::new([0f64, 1.5f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0f64, 1.5f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0f64, 1.5f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0f64, 1.5f64]))
+        );
         movement[0] = 2f64;
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(Cartessian2D::new([1f64, 1.5f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1f64, 1.5f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([1f64, 1.5f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([1f64, 1.5f64]))
+        );
 
         let mut a = CartessianND::new(vec![2f64; 2]);
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3079,8 +3115,14 @@ mod test {
 
         a[0] = 1f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![-1f64, 0.0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![-1f64, 0.0]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(CartessianND::new(vec![-1f64, 0.0]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![-1f64, 0.0])
+        );
 
         a[0] = 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
@@ -3088,8 +3130,14 @@ mod test {
 
         a[0] = 0f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![1f64, 0.0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![1f64, 0.0]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(CartessianND::new(vec![1f64, 0.0]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![1f64, 0.0])
+        );
 
         a[0] = -1f64;
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3097,11 +3145,23 @@ mod test {
 
         a[0] = 0.5f64;
         let mut movement = CartessianND::new(vec![-2f64; 2]);
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(CartessianND::new(vec![0f64, 1.5f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![0f64, 1.5f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![0f64, 1.5f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![0f64, 1.5f64]))
+        );
         movement[0] = 2f64;
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(CartessianND::new(vec![1f64, 1.5f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![1f64, 1.5f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![1f64, 1.5f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![1f64, 1.5f64]))
+        );
 
         // Integer
         let planepair = SimplePlanePair::new(0, [2, 0]).unwrap();
@@ -3133,12 +3193,18 @@ mod test {
         a[0] = 0;
         let mut movement = Cartessian2D::new([-1, 0]);
         assert_eq!(planepair.find_intersect(&a, &movement), Some(a.clone()));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(a.clone()));
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(a.clone())
+        );
 
         a[0] = 2;
         movement[0] = 1;
         assert_eq!(planepair.find_intersect(&a, &movement), Some(a.clone()));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(a.clone()));
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(a.clone())
+        );
 
         let mut a = CartessianND::new(vec![3; 2]);
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3146,8 +3212,14 @@ mod test {
 
         a[0] = 2;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![-1, 0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![-1, 0]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(CartessianND::new(vec![-1, 0]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![-1, 0])
+        );
 
         a[0] = 1;
         assert_eq!(planepair.check_inclusion(&a), true);
@@ -3156,7 +3228,10 @@ mod test {
         a[0] = 0;
         assert_eq!(planepair.check_inclusion(&a), true);
         assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![1, 0])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![1, 0]));
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![1, 0])
+        );
 
         a[0] = -1;
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3165,22 +3240,22 @@ mod test {
         a[0] = 0;
         let mut movement = CartessianND::new(vec![-1, 0]);
         assert_eq!(planepair.find_intersect(&a, &movement), Some(a.clone()));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(a.clone()));
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(a.clone())
+        );
 
         a[0] = 2;
         movement[0] = 1;
         assert_eq!(planepair.find_intersect(&a, &movement), Some(a.clone()));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(a.clone()));
-
-
-        assert_eq!(format!("{}", planepair), "SimplePlanePair between x[0] = 0 and 2");
-        assert_eq!(format!("{:.3e}", planepair), "SimplePlanePair between x[0] = 0.000e0 and 2.000e0");
-        assert_eq!(format!("{}", planepair.brief()), "0,0,2");
-        assert_eq!(format!("{:.3e}", planepair.brief()), "0,0.000e0,2.000e0");
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(a.clone())
+        );
     }
 
     #[test]
-    fn test_simple_plane_pair_periodic(){
+    fn test_simple_plane_pair_periodic() {
         // Float, fixed size
         let planepair = SimplePlanePair::new(0, [0f64, 4f64]).unwrap();
 
@@ -3188,16 +3263,25 @@ mod test {
         assert_eq!(planepair.find_pair(&pos1), Cartessian2D::new([3f64, 2f64]));
 
         let pos2 = Cartessian2D::new([4.5f64, 1f64]);
-        assert_eq!(planepair.find_pair(&pos2), Cartessian2D::new([0.5f64, 1f64]));
+        assert_eq!(
+            planepair.find_pair(&pos2),
+            Cartessian2D::new([0.5f64, 1f64])
+        );
 
         // Float, free size
         let planepair = SimplePlanePair::new(0, [0f64, 4f64]).unwrap();
 
         let pos1 = CartessianND::new(vec![-1f64, 2f64]);
-        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![3f64, 2f64]));
+        assert_eq!(
+            planepair.find_pair(&pos1),
+            CartessianND::new(vec![3f64, 2f64])
+        );
 
         let pos2 = CartessianND::new(vec![4.5f64, 1f64]);
-        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![0.5f64, 1f64]));
+        assert_eq!(
+            planepair.find_pair(&pos2),
+            CartessianND::new(vec![0.5f64, 1f64])
+        );
 
         // Integer, fixed size
         let planepair = SimplePlanePair::new(0, [0i32, 4i32]).unwrap();
@@ -3212,15 +3296,21 @@ mod test {
         let planepair = SimplePlanePair::new(0, [0i32, 4i32]).unwrap();
 
         let pos1 = CartessianND::new(vec![-1i32, 2i32]);
-        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![4i32, 2i32]));
+        assert_eq!(
+            planepair.find_pair(&pos1),
+            CartessianND::new(vec![4i32, 2i32])
+        );
 
         let pos2 = CartessianND::new(vec![6i32, 1i32]);
-        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![1i32, 1i32]));
+        assert_eq!(
+            planepair.find_pair(&pos2),
+            CartessianND::new(vec![1i32, 1i32])
+        );
     }
 
     #[test]
     #[should_panic]
-    fn test_planepair_panic(){
+    fn test_planepair_panic() {
         let planepair = SimplePlanePair::new(0, [1f64, 0f64]).unwrap();
         let a = Cartessian2D::new([3f64; 2]);
         let movement = Cartessian2D::new([-2f64; 2]);
@@ -3228,9 +3318,12 @@ mod test {
     }
 
     #[test]
-    fn test_planepair(){
+    fn test_planepair() {
         let planepair = PlanePair::new(Cartessian2D::new([1f64, 1f64]), [1f64, 0f64]).unwrap();
-        assert_abs_diff_eq!(planepair.normal_vec, Cartessian2D::new([1.0 / 2f64.sqrt(); 2]));
+        assert_abs_diff_eq!(
+            planepair.normal_vec,
+            Cartessian2D::new([1.0 / 2f64.sqrt(); 2])
+        );
 
         let mut a = Cartessian2D::new([1f64; 2]);
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3238,8 +3331,14 @@ mod test {
 
         a *= 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(Cartessian2D::new([-1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(planepair.normal_at_unsafe(&a), Cartessian2D::new([-1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(Cartessian2D::new([-1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            Cartessian2D::new([-1.0 / 2f64.sqrt(); 2])
+        );
 
         a *= 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
@@ -3251,19 +3350,40 @@ mod test {
 
         a *= 0f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(Cartessian2D::new([1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(planepair.normal_at_unsafe(&a), Cartessian2D::new([1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(Cartessian2D::new([1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            Cartessian2D::new([1.0 / 2f64.sqrt(); 2])
+        );
 
         let a = Cartessian2D::new([0f64, 0.5f64]);
         let mut movement = Cartessian2D::new([0f64, 1f64]);
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(Cartessian2D::new([0f64, 1f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0f64, 1f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0f64, 1f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0f64, 1f64]))
+        );
         movement[1] = -1f64;
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(Cartessian2D::new([0f64; 2])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0f64; 2])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0f64; 2]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0f64; 2]))
+        );
 
         let planepair = PlanePair::new(CartessianND::new(vec![1f64, 1f64]), [1f64, 0f64]).unwrap();
-        assert_abs_diff_eq!(planepair.normal_vec, CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]));
+        assert_abs_diff_eq!(
+            planepair.normal_vec,
+            CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])
+        );
 
         let mut a = CartessianND::new(vec![1f64; 2]);
         assert_eq!(planepair.check_inclusion(&a), false);
@@ -3271,8 +3391,14 @@ mod test {
 
         a *= 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![-1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![-1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(CartessianND::new(vec![-1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![-1.0 / 2f64.sqrt(); 2])
+        );
 
         a *= 0.5f64;
         assert_eq!(planepair.check_inclusion(&a), true);
@@ -3284,25 +3410,38 @@ mod test {
 
         a *= 0f64;
         assert_eq!(planepair.check_inclusion(&a), true);
-        assert_eq!(planepair.normal_at(&a), Some(CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])));
-        assert_eq!(planepair.normal_at_unsafe(&a), CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]));
+        assert_eq!(
+            planepair.normal_at(&a),
+            Some(CartessianND::new(vec![1.0 / 2f64.sqrt(); 2]))
+        );
+        assert_eq!(
+            planepair.normal_at_unsafe(&a),
+            CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])
+        );
 
         let a = CartessianND::new(vec![0f64, 0.5f64]);
         let mut movement = CartessianND::new(vec![0f64, 1f64]);
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(CartessianND::new(vec![0f64, 1f64])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![0f64, 1f64])));
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![0f64, 1f64]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![0f64, 1f64]))
+        );
         movement[1] = -1f64;
-        assert_eq!(planepair.find_intersect(&a, &movement), Some(CartessianND::new(vec![0f64; 2])));
-        assert_eq!(planepair.find_intersect_unsafe(&a, &movement), Some(CartessianND::new(vec![0f64; 2])));
-
-        assert_eq!(format!("{}", planepair), "PlanePair normal to (0.7071067811865475:0.7071067811865475) between constant 0 and 0.7071067811865475");
-        assert_eq!(format!("{:.3e}", planepair), "PlanePair normal to (7.071e-1:7.071e-1) between constant 0.000e0 and 7.071e-1");
-        assert_eq!(format!("{}", planepair.brief()), "0.7071067811865475:0.7071067811865475,0,0.7071067811865475");
-        assert_eq!(format!("{:.3e}", planepair.brief()), "7.071e-1:7.071e-1,0.000e0,7.071e-1");
+        assert_eq!(
+            planepair.find_intersect(&a, &movement),
+            Some(CartessianND::new(vec![0f64; 2]))
+        );
+        assert_eq!(
+            planepair.find_intersect_unsafe(&a, &movement),
+            Some(CartessianND::new(vec![0f64; 2]))
+        );
     }
 
     #[test]
-    fn test_plane_pair_periodic(){
+    fn test_plane_pair_periodic() {
         // Float, fixed size
         let normal = Cartessian2D::new([1f64, 0f64]);
         let planepair = PlanePair::new(normal, [0f64, 4f64]).unwrap();
@@ -3311,33 +3450,43 @@ mod test {
         assert_eq!(planepair.find_pair(&pos1), Cartessian2D::new([3f64, 2f64]));
 
         let pos2 = Cartessian2D::new([4.5f64, 1f64]);
-        assert_eq!(planepair.find_pair(&pos2), Cartessian2D::new([0.5f64, 1f64]));
+        assert_eq!(
+            planepair.find_pair(&pos2),
+            Cartessian2D::new([0.5f64, 1f64])
+        );
 
         // Float, free size
         let normal = CartessianND::new(vec![1f64, 0f64]);
         let planepair = PlanePair::new(normal, [0f64, 4f64]).unwrap();
 
         let pos1 = CartessianND::new(vec![-1f64, 2f64]);
-        assert_eq!(planepair.find_pair(&pos1), CartessianND::new(vec![3f64, 2f64]));
+        assert_eq!(
+            planepair.find_pair(&pos1),
+            CartessianND::new(vec![3f64, 2f64])
+        );
 
         let pos2 = CartessianND::new(vec![4.5f64, 1f64]);
-        assert_eq!(planepair.find_pair(&pos2), CartessianND::new(vec![0.5f64, 1f64]));
+        assert_eq!(
+            planepair.find_pair(&pos2),
+            CartessianND::new(vec![0.5f64, 1f64])
+        );
     }
 
     #[test]
-    fn test_simplebox(){
-        let simplebox : SimpleBox<i32, 3> = SimpleBox::cube_with_center(&Cartessian3D::new([0; 3]), 3).unwrap();
-        for plane in &simplebox.planes{
-            match plane.idx{
+    fn test_simplebox() {
+        let simplebox: SimpleBox<i32, 3> =
+            SimpleBox::cube_with_center(&Cartessian3D::new([0; 3]), 3).unwrap();
+        for plane in &simplebox.planes {
+            match plane.idx {
                 0 => {
                     assert_eq!(plane, &SimplePlanePair::new(0, [-3, 3]).unwrap());
-                },
+                }
                 1 => {
                     assert_eq!(plane, &SimplePlanePair::new(1, [-3, 3]).unwrap());
-                },
+                }
                 2 => {
                     assert_eq!(plane, &SimplePlanePair::new(2, [-3, 3]).unwrap());
-                },
+                }
                 _ => {
                     unreachable!();
                 }
@@ -3380,13 +3529,16 @@ mod test {
         assert_eq!(simplebox.normal_at(&a), Some(vec.clone()));
         assert_eq!(simplebox.normal_at_unsafe(&a), vec.clone());
 
-        a[1] = 0; vec[1] = 0;
-        a[2] = 3; vec[2] = -1;
+        a[1] = 0;
+        vec[1] = 0;
+        a[2] = 3;
+        vec[2] = -1;
         assert_eq!(simplebox.check_inclusion(&a), true);
         assert_eq!(simplebox.normal_at(&a), Some(vec.clone()));
         assert_eq!(simplebox.normal_at_unsafe(&a), vec.clone());
 
-        a[2] = -3; vec[2] = 1;
+        a[2] = -3;
+        vec[2] = 1;
         assert_eq!(simplebox.check_inclusion(&a), true);
         assert_eq!(simplebox.normal_at(&a), Some(vec.clone()));
         assert_eq!(simplebox.normal_at_unsafe(&a), vec.clone());
@@ -3396,135 +3548,161 @@ mod test {
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[0] = -3; vec[0] = -1;
+        a[0] = -3;
+        vec[0] = -1;
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[0] = 0; vec[0] = 0;
-        a[1] = 3; vec[1] = 1;
+        a[0] = 0;
+        vec[0] = 0;
+        a[1] = 3;
+        vec[1] = 1;
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[1] = -3; vec[1] = -1;
+        a[1] = -3;
+        vec[1] = -1;
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[1] = 0; vec[1] = 0;
-        a[2] = 3; vec[2] = 1;
+        a[1] = 0;
+        vec[1] = 0;
+        a[2] = 3;
+        vec[2] = 1;
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[2] = -3; vec[2] = -1;
+        a[2] = -3;
+        vec[2] = -1;
         assert_eq!(simplebox.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(simplebox.find_intersect_unsafe(&a, &vec), Some(a.clone()));
-
-        assert_eq!(format!("{}", simplebox), "SimpleBox enveloped in plane pairs (0,-3,3), (1,-3,3), (2,-3,3)");
-        assert_eq!(format!("{:.3e}", simplebox), "SimpleBox enveloped in plane pairs (0,-3.000e0,3.000e0), (1,-3.000e0,3.000e0), (2,-3.000e0,3.000e0)");
-        assert_eq!(format!("{}", simplebox.brief()), "(0,-3,3),(1,-3,3),(2,-3,3)");
-        assert_eq!(format!("{:.3e}", simplebox.brief()), "(0,-3.000e0,3.000e0),(1,-3.000e0,3.000e0),(2,-3.000e0,3.000e0)");
     }
 
     #[test]
-    fn test_simplebox_periodic(){
+    fn test_simplebox_periodic() {
         // Float, Fixed size
-        let simplebox : SimpleBox<f64, 3>
-            = SimpleBox::cube_with_center(&Cartessian3D::new([0f64; 3]), 2.0).unwrap();
+        let simplebox: SimpleBox<f64, 3> =
+            SimpleBox::cube_with_center(&Cartessian3D::new([0f64; 3]), 2.0).unwrap();
 
         let mut pos = Cartessian3D::new([0f64; 3]);
         let mut res = pos.clone();
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
-        pos[2] = -3f64; res[2] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
+        pos[2] = -3f64;
+        res[2] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Float, Free size
-        let simplebox : SimpleBox<f64, 3>
-            = SimpleBox::cube_with_center(&CartessianND::new(vec![0f64; 3]), 2.0).unwrap();
+        let simplebox: SimpleBox<f64, 3> =
+            SimpleBox::cube_with_center(&CartessianND::new(vec![0f64; 3]), 2.0).unwrap();
 
         let mut pos = CartessianND::new(vec![0f64; 3]);
         let mut res = pos.clone();
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
-        pos[2] = -3f64; res[2] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
+        pos[2] = -3f64;
+        res[2] = 1f64;
         simplebox.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Int, Fixed size
-        let simplebox : SimpleBox<i32, 3>
-            = SimpleBox::cube_with_center(&Cartessian3D::new([0i32; 3]), 2).unwrap();
+        let simplebox: SimpleBox<i32, 3> =
+            SimpleBox::cube_with_center(&Cartessian3D::new([0i32; 3]), 2).unwrap();
 
         let mut pos = Cartessian3D::new([0i32; 3]);
         let mut res = pos.clone();
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
-        pos[2] = -3i32; res[2] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
+        pos[2] = -3i32;
+        res[2] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
         // Int, Free size
-        let simplebox : SimpleBox<i32, 3>
-            = SimpleBox::cube_with_center(&CartessianND::new(vec![0i32; 3]), 2).unwrap();
+        let simplebox: SimpleBox<i32, 3> =
+            SimpleBox::cube_with_center(&CartessianND::new(vec![0i32; 3]), 2).unwrap();
 
         let mut pos = CartessianND::new(vec![0i32; 3]);
         let mut res = pos.clone();
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
-        pos[2] = -3i32; res[2] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
+        pos[2] = -3i32;
+        res[2] = 2i32;
         simplebox.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
     }
 
     #[test]
-    fn test_cube(){
+    fn test_cube() {
         let cube = Cube::new(&Cartessian3D::new([0; 3]), 3);
         assert_eq!(&cube.center, &Cartessian3D::new([0; 3]));
         assert_eq!(&cube.radius, &3);
@@ -3561,12 +3739,15 @@ mod test {
         assert_eq!(cube.check_inclusion(&a), true);
         assert_eq!(cube.normal_at(&a), Some(vec.clone()));
 
-        a[1] = 0; vec[1] = 0;
-        a[2] = 3; vec[2] = -1;
+        a[1] = 0;
+        vec[1] = 0;
+        a[2] = 3;
+        vec[2] = -1;
         assert_eq!(cube.check_inclusion(&a), true);
         assert_eq!(cube.normal_at(&a), Some(vec.clone()));
 
-        a[2] = -3; vec[2] = 1;
+        a[2] = -3;
+        vec[2] = 1;
         assert_eq!(cube.check_inclusion(&a), true);
         assert_eq!(cube.normal_at(&a), Some(vec.clone()));
 
@@ -3575,135 +3756,157 @@ mod test {
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[0] = -3; vec[0] = -1;
+        a[0] = -3;
+        vec[0] = -1;
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[0] = 0; vec[0] = 0;
-        a[1] = 3; vec[1] = 1;
+        a[0] = 0;
+        vec[0] = 0;
+        a[1] = 3;
+        vec[1] = 1;
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[1] = -3; vec[1] = -1;
+        a[1] = -3;
+        vec[1] = -1;
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[1] = 0; vec[1] = 0;
-        a[2] = 3; vec[2] = 1;
+        a[1] = 0;
+        vec[1] = 0;
+        a[2] = 3;
+        vec[2] = 1;
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
 
-        a[2] = -3; vec[2] = -1;
+        a[2] = -3;
+        vec[2] = -1;
         assert_eq!(cube.find_intersect(&a, &vec), Some(a.clone()));
         assert_eq!(cube.find_intersect_unsafe(&a, &vec), Some(a.clone()));
-
-        assert_eq!(format!("{}", cube), "Cube has center at (0:0:0) with radius 3");
-        assert_eq!(format!("{:.3e}", cube), "Cube has center at (0.000e0:0.000e0:0.000e0) with radius 3.000e0");
-        assert_eq!(format!("{}", cube.brief()), "0:0:0,3");
-        assert_eq!(format!("{:.3e}", cube.brief()), "0.000e0:0.000e0:0.000e0,3.000e0");
     }
 
     #[test]
-    fn test_cube_periodic(){
+    fn test_cube_periodic() {
         // Float, Fixed size
-        let cube : Cube<Cartessian3D<f64>>
-            = Cube::new(&Cartessian3D::new([0f64; 3]), 2.0);
+        let cube: Cube<Cartessian3D<f64>> = Cube::new(&Cartessian3D::new([0f64; 3]), 2.0);
 
         let mut pos = Cartessian3D::new([0f64; 3]);
         let mut res = pos.clone();
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
-        pos[2] = -3f64; res[2] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
+        pos[2] = -3f64;
+        res[2] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Float, Free size
-        let cube : Cube<CartessianND<f64>>
-            = Cube::new(&CartessianND::new(vec![0f64; 3]), 2.0);
+        let cube: Cube<CartessianND<f64>> = Cube::new(&CartessianND::new(vec![0f64; 3]), 2.0);
 
         let mut pos = CartessianND::new(vec![0f64; 3]);
         let mut res = pos.clone();
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
-        pos[2] = -3f64; res[2] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
+        pos[2] = -3f64;
+        res[2] = 1f64;
         cube.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Int, Fixed size
-        let cube : Cube<Cartessian3D<i32>>
-            = Cube::new(&Cartessian3D::new([0i32; 3]), 2);
+        let cube: Cube<Cartessian3D<i32>> = Cube::new(&Cartessian3D::new([0i32; 3]), 2);
 
         let mut pos = Cartessian3D::new([0i32; 3]);
         let mut res = pos.clone();
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
-        pos[2] = -3i32; res[2] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
+        pos[2] = -3i32;
+        res[2] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
         // Int, Free size
-        let cube : Cube<CartessianND<i32>>
-            = Cube::new(&CartessianND::new(vec![0i32; 3]), 2);
+        let cube: Cube<CartessianND<i32>> = Cube::new(&CartessianND::new(vec![0i32; 3]), 2);
 
         let mut pos = CartessianND::new(vec![0i32; 3]);
         let mut res = pos.clone();
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
 
-        pos[0] = -3i32; res[0] = 2i32;
-        pos[1] = -3i32; res[1] = 2i32;
-        pos[2] = -3i32; res[2] = 2i32;
+        pos[0] = -3i32;
+        res[0] = 2i32;
+        pos[1] = -3i32;
+        res[1] = 2i32;
+        pos[2] = -3i32;
+        res[2] = 2i32;
         cube.find_pair_mut(&mut pos);
         assert_eq!(&pos, &res);
     }
 
     #[test]
-    fn test_parallelogram(){
+    fn test_parallelogram() {
         let vec1 = Cartessian2D::new([0f64, 1f64]);
         let mut vec2 = Cartessian2D::new([1f64, -1f64]);
 
@@ -3748,57 +3951,139 @@ mod test {
 
         a.coord = [1f64, 0.5f64];
         let mut movement = Cartessian2D::new([1f64, 1f64]);
-        assert_eq!(parallelogram.find_intersect(&a, &movement), Some(Cartessian2D::new([1.5f64, 1f64])));
-        assert_eq!(parallelogram.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1.5f64, 1f64])));
+        assert_eq!(
+            parallelogram.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([1.5f64, 1f64]))
+        );
+        assert_eq!(
+            parallelogram.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([1.5f64, 1f64]))
+        );
 
         movement.coord = [-1f64; 2];
-        assert_eq!(parallelogram.find_intersect(&a, &movement), Some(Cartessian2D::new([0.5f64, 0f64])));
-        assert_eq!(parallelogram.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0.5f64, 0f64])));
+        assert_eq!(
+            parallelogram.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0.5f64, 0f64]))
+        );
+        assert_eq!(
+            parallelogram.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0.5f64, 0f64]))
+        );
 
         movement.coord = [2f64, 0f64];
-        assert_eq!(parallelogram.find_intersect(&a, &movement), Some(Cartessian2D::new([1.5f64, 0.5f64])));
-        assert_eq!(parallelogram.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([1.5f64, 0.5f64])));
+        assert_eq!(
+            parallelogram.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([1.5f64, 0.5f64]))
+        );
+        assert_eq!(
+            parallelogram.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([1.5f64, 0.5f64]))
+        );
 
         movement.coord = [-2f64, 0f64];
-        assert_eq!(parallelogram.find_intersect(&a, &movement), Some(Cartessian2D::new([0.5f64, 0.5f64])));
-        assert_eq!(parallelogram.find_intersect_unsafe(&a, &movement), Some(Cartessian2D::new([0.5f64, 0.5f64])));
-
-        assert_eq!(format!("{}", parallelogram), "Parallelogram enveloped in plane pairs (0:1,0,1), (0.7071067811865475:-0.7071067811865475,0,0.7071067811865475)");
-        assert_eq!(format!("{:.3e}", parallelogram), "Parallelogram enveloped in plane pairs (0.000e0:1.000e0,0.000e0,1.000e0), (7.071e-1:-7.071e-1,0.000e0,7.071e-1)");
-        assert_eq!(format!("{}", parallelogram.brief()), "(0:1,0,1),(0.7071067811865475:-0.7071067811865475,0,0.7071067811865475)");
-        assert_eq!(format!("{:.3e}", parallelogram.brief()), "(0.000e0:1.000e0,0.000e0,1.000e0),(7.071e-1:-7.071e-1,0.000e0,7.071e-1)");
+        assert_eq!(
+            parallelogram.find_intersect(&a, &movement),
+            Some(Cartessian2D::new([0.5f64, 0.5f64]))
+        );
+        assert_eq!(
+            parallelogram.find_intersect_unsafe(&a, &movement),
+            Some(Cartessian2D::new([0.5f64, 0.5f64]))
+        );
     }
 
     #[test]
-    fn test_parallelogram_periodic(){
+    fn test_parallelogram_periodic() {
         // Float, Fixed size
-        let parallelogram : Parallelogram<f64, 3>
-            = Parallelogram::new(
-                [PlanePair::new(Cartessian3D::new([1f64, 0f64, 0f64]), [-2f64, 2f64]).unwrap(),
-                PlanePair::new(Cartessian3D::new([0f64, 1f64, 0f64]), [-2f64, 2f64]).unwrap(),
-                PlanePair::new(Cartessian3D::new([0f64, 0f64, 1f64]), [-2f64, 2f64]).unwrap()]
-            ).unwrap();
+        let parallelogram: Parallelogram<f64, 3> = Parallelogram::new([
+            PlanePair::new(Cartessian3D::new([1f64, 0f64, 0f64]), [-2f64, 2f64]).unwrap(),
+            PlanePair::new(Cartessian3D::new([0f64, 1f64, 0f64]), [-2f64, 2f64]).unwrap(),
+            PlanePair::new(Cartessian3D::new([0f64, 0f64, 1f64]), [-2f64, 2f64]).unwrap(),
+        ])
+        .unwrap();
 
         let mut pos = Cartessian3D::new([0f64; 3]);
         let mut res = pos.clone();
         parallelogram.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
         parallelogram.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
         parallelogram.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
-        pos[0] = -3f64; res[0] = 1f64;
-        pos[1] = -3f64; res[1] = 1f64;
-        pos[2] = -3f64; res[2] = 1f64;
+        pos[0] = -3f64;
+        res[0] = 1f64;
+        pos[1] = -3f64;
+        res[1] = 1f64;
+        pos[2] = -3f64;
+        res[2] = 1f64;
         parallelogram.find_pair_mut(&mut pos);
-        assert_abs_diff_eq!(&pos, &res, epsilon=1e-3);
+        assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
+    }
+
+    #[test]
+    fn test_serde_planes() {
+        use serde_json::{from_str, to_string};
+
+        // Direction
+        let dir = Direction::Positive;
+        let expected = r#""Positive""#;
+        assert_eq!(expected, to_string(&dir).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(dir, expected);
+
+        // SimplePlane
+        let simpleplane = SimplePlane::<f64>::new(0, 1.0, Direction::Positive);
+        let expected = r#"{"idx":0,"pos":1.0,"dir_in":"Positive"}"#;
+        assert_eq!(expected, to_string(&simpleplane).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(simpleplane, expected);
+
+        // Plane
+        let normal_vec = Cartessian2D::new([0.0, 1.0]);
+        let constant = 1.0f64;
+        let plane: Plane<Cartessian2D<f64>> = Plane::new(&normal_vec, constant);
+        let expected = r#"{"normal_vec":{"coord":[0.0,1.0]},"constant":1.0}"#;
+        assert_eq!(expected, to_string(&plane).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(plane, expected);
+
+        // Simple Plane Pair
+        let simpleplanepair = SimplePlanePair::<f64>::new(0, [0.0, 1.0]).unwrap();
+        let expected = r#"{"idx":0,"pos":[0.0,1.0]}"#;
+        assert_eq!(expected, to_string(&simpleplanepair).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(simpleplanepair, expected);
+
+        // Plane Pair
+        let normal_vec = Cartessian2D::new([0.0, 1.0]);
+        let constant = [0.0f64, 1.0f64];
+        let planepair: PlanePair<Cartessian2D<f64>> = PlanePair::new(normal_vec, constant).unwrap();
+        let expected = r#"{"normal_vec":{"coord":[0.0,1.0]},"constant":[0.0,1.0]}"#;
+        assert_eq!(expected, to_string(&planepair).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(planepair, expected);
+
+        // Cube
+        let center = Cartessian2D::new([0.0, 0.0]);
+        let radius = 1.0;
+        let cube: Cube<Cartessian2D<f64>> = Cube::new(&center, radius);
+        let expected = r#"{"center":{"coord":[0.0,0.0]},"radius":1.0}"#;
+        assert_eq!(expected, to_string(&cube).unwrap());
+
+        let expected = from_str(&expected).unwrap();
+        assert_eq!(cube, expected);
     }
 }
-
-

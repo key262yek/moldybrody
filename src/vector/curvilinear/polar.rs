@@ -9,10 +9,11 @@ use num_traits::{Float, FloatConst};
 use std::convert::From;
 use std::fmt::Debug;
 
+use serde::{Deserialize, Serialize};
 use std::ops::Rem;
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Polar<T> {
     pub radius: T,
     pub theta: T,
@@ -29,7 +30,7 @@ where
     }
 }
 
-impl<T> Polar<T> {
+impl<T: Scalar> Polar<T> {
     pub fn new(radius: T, theta: T) -> Self
     where
         T: AbsDiffEq<Epsilon = T> + PartialOrd + FloatConst + Float,
@@ -85,7 +86,7 @@ impl<T> Polar<T> {
 
 impl<T> Default for Polar<T>
 where
-    T: Default,
+    T: Default + Scalar,
 {
     fn default() -> Self {
         Self {
@@ -97,7 +98,7 @@ where
 
 impl<T> PartialEq for Polar<T>
 where
-    T: PartialEq + FloatConst + Float,
+    T: Scalar + FloatConst + Float,
 {
     fn eq(&self, other: &Self) -> bool {
         let dr = self.radius - other.radius;
@@ -110,7 +111,7 @@ where
 
 impl<T> AbsDiffEq for Polar<T>
 where
-    T: AbsDiffEq + FloatConst + Float,
+    T: Scalar + AbsDiffEq + FloatConst + Float,
     <T as AbsDiffEq>::Epsilon: Clone,
 {
     type Epsilon = <T as AbsDiffEq>::Epsilon;
@@ -301,7 +302,7 @@ where
 macro_rules! impl_polar_op {
     ($trt : ident, $operator : tt, $mth : ident) => {
         impl<T> $trt<Polar<T>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Polar<T>;
 
             fn $mth(mut self, rhs : Polar<T>) -> Polar<T>{
@@ -315,7 +316,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Polar<T>;
 
             fn $mth(mut self, rhs : &'a Polar<T>) -> Polar<T>{
@@ -329,7 +330,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<Polar<T>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Polar<T>;
 
             fn $mth(self, mut rhs : Polar<T>) -> Polar<T>{
@@ -343,7 +344,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Polar<T>;
 
             fn $mth(self, rhs : &'a Polar<T>) -> Polar<T>{
@@ -361,7 +362,7 @@ macro_rules! impl_polar_op {
         // ====================================================================
 
         impl<T> $trt<Cartessian<T, 2>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, mut rhs : Cartessian<T, 2>) -> Cartessian<T, 2>{
@@ -373,7 +374,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Cartessian<T, 2>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, rhs : &'a Cartessian<T, 2>) -> Cartessian<T, 2>{
@@ -387,7 +388,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<Cartessian<T, 2>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, mut rhs : Cartessian<T, 2>) -> Cartessian<T, 2>{
@@ -399,7 +400,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Cartessian<T, 2>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, rhs : &'a Cartessian<T, 2>) -> Cartessian<T, 2>{
@@ -413,7 +414,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<T> $trt<Polar<T>> for Cartessian<T, 2>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(mut self, rhs : Polar<T>) -> Cartessian<T, 2>{
@@ -425,7 +426,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for Cartessian<T, 2>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(mut self, rhs : &'a Polar<T>) -> Cartessian<T, 2>{
@@ -437,7 +438,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<Polar<T>> for &'a Cartessian<T, 2>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, rhs : Polar<T>) -> Cartessian<T, 2>{
@@ -451,7 +452,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for &'a Cartessian<T, 2>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = Cartessian<T, 2>;
 
             fn $mth(self, rhs : &'a Polar<T>) -> Cartessian<T, 2>{
@@ -467,7 +468,7 @@ macro_rules! impl_polar_op {
         // ====================================================================
 
         impl<T> $trt<CartessianND<T>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, mut rhs : CartessianND<T>) -> CartessianND<T>{
@@ -483,7 +484,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a CartessianND<T>> for Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, rhs : &'a CartessianND<T>) -> CartessianND<T>{
@@ -501,7 +502,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<CartessianND<T>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, mut rhs : CartessianND<T>) -> CartessianND<T>{
@@ -517,7 +518,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a CartessianND<T>> for &'a Polar<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, rhs : &'a CartessianND<T>) -> CartessianND<T>{
@@ -535,7 +536,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<T> $trt<Polar<T>> for CartessianND<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(mut self, rhs : Polar<T>) -> CartessianND<T>{
@@ -551,7 +552,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for CartessianND<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(mut self, rhs : &'a Polar<T>) -> CartessianND<T>{
@@ -567,7 +568,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<Polar<T>> for &'a CartessianND<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, rhs : Polar<T>) -> CartessianND<T>{
@@ -585,7 +586,7 @@ macro_rules! impl_polar_op {
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for &'a CartessianND<T>
-            where T : $trt<Output = T> + Copy + Float + Mul<Output =T>{
+            where T : $trt<Output = T> + Scalar + Float + Mul<Output =T>{
             type Output = CartessianND<T>;
 
             fn $mth(self, rhs : &'a Polar<T>) -> CartessianND<T>{
@@ -610,7 +611,7 @@ impl_polar_op!(Sub, -, sub);
 
 impl<T> Mul<T> for Polar<T>
 where
-    T: MulAssign + Clone,
+    T: Scalar + MulAssign + Clone,
 {
     type Output = Polar<T>;
 
@@ -622,7 +623,7 @@ where
 
 impl<'a, T> Mul<T> for &'a Polar<T>
 where
-    T: MulAssign + Clone,
+    T: Scalar + MulAssign + Clone,
 {
     type Output = Polar<T>;
 
@@ -635,7 +636,7 @@ where
 
 impl<T> MulAssign<T> for Polar<T>
 where
-    T: MulAssign,
+    T: Scalar + MulAssign,
 {
     fn mul_assign(&mut self, rhs: T) {
         self.radius *= rhs;
@@ -644,7 +645,7 @@ where
 
 impl<T> Div<T> for Polar<T>
 where
-    T: DivAssign + Clone,
+    T: Scalar + DivAssign + Clone,
 {
     type Output = Polar<T>;
 
@@ -656,7 +657,7 @@ where
 
 impl<'a, T> Div<T> for &'a Polar<T>
 where
-    T: DivAssign + Clone,
+    T: Scalar + DivAssign + Clone,
 {
     type Output = Polar<T>;
 
@@ -669,7 +670,7 @@ where
 
 impl<T> DivAssign<T> for Polar<T>
 where
-    T: DivAssign,
+    T: Scalar + DivAssign,
 {
     fn div_assign(&mut self, rhs: T) {
         self.radius /= rhs;
@@ -727,7 +728,7 @@ macro_rules! impl_assign_op{
     ($trt : ident, $operate : tt, $mth : ident, $doc : expr) => {
 
         impl<T> $trt<Polar<T>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : Polar<T>){
                 let x = self.index(0) $operate rhs.index(0);
                 let y = self.index(1) $operate rhs.index(1);
@@ -738,7 +739,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : &'a Polar<T>){
                 let x = self.index(0) $operate rhs.index(0);
                 let y = self.index(1) $operate rhs.index(1);
@@ -749,7 +750,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<T> $trt<Cartessian<T, 2>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : Cartessian<T, 2>){
                 let x = self.index(0) $operate *rhs.index(0);
                 let y = self.index(1) $operate *rhs.index(1);
@@ -760,7 +761,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<'a, T> $trt<&'a Cartessian<T, 2>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : &'a Cartessian<T, 2>){
                 let x = self.index(0) $operate *rhs.index(0);
                 let y = self.index(1) $operate *rhs.index(1);
@@ -771,7 +772,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<T> $trt<Polar<T>> for Cartessian<T, 2>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : Polar<T>){
                 self[0].$mth(rhs.index(0));
                 self[1].$mth(rhs.index(1));
@@ -779,7 +780,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for Cartessian<T, 2>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : &'a Polar<T>){
                 self[0].$mth(rhs.index(0));
                 self[1].$mth(rhs.index(1));
@@ -787,7 +788,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<T> $trt<CartessianND<T>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : CartessianND<T>){
                 if self.dim() != rhs.dim() {
                     panic!("Dimension of CartessianND should be 2 for operate with Polar");
@@ -802,7 +803,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<'a, T> $trt<&'a CartessianND<T>> for Polar<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : &'a CartessianND<T>){
                 if self.dim() != rhs.dim() {
                     panic!("Dimension of CartessianND should be 2 for operate with Polar");
@@ -817,7 +818,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<T> $trt<Polar<T>> for CartessianND<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : Polar<T>){
                 if self.dim() != rhs.dim() {
                     panic!("Dimension of CartessianND should be 2 for operate with Polar");
@@ -829,7 +830,7 @@ macro_rules! impl_assign_op{
         }
 
         impl<'a, T> $trt<&'a Polar<T>> for CartessianND<T>
-            where T : $trt + Float + Mul<Output = T>{
+            where T : $trt + Scalar + Float + Mul<Output = T>{
             fn $mth(&mut self, rhs : &'a Polar<T>){
                 if self.dim() != rhs.dim() {
                     panic!("Dimension of CartessianND should be 2 for operate with Polar");
@@ -1118,6 +1119,7 @@ mod test {
     use super::*;
     use crate::vector::{Cartessian, CartessianND};
     use approx::assert_abs_diff_eq;
+    use serde_json::{from_str, to_string};
     use std::f64::consts::PI;
 
     #[test]
@@ -1284,5 +1286,15 @@ mod test {
 
         assert_abs_diff_eq!(a.norm_l1(), 2f64.sqrt());
         assert_abs_diff_eq!(a.norm_l2(), 1f64);
+    }
+
+    #[test]
+    fn test_serde_polar() {
+        let a: Polar<f64> = Polar::new(2f64, 0f64);
+        let expected = r#"{"radius":2.0,"theta":0.0}"#;
+        assert_eq!(expected, to_string(&a).unwrap());
+
+        let expected: Polar<f64> = from_str(&expected).unwrap();
+        assert_eq!(a, expected);
     }
 }

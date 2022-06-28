@@ -12,13 +12,6 @@ use crate::state::State;
 use crate::vector::Vector;
 use rand_pcg::Pcg64;
 
-pub enum ForceSpecies<'a, S: State, F: Vector, P> {
-    GlobalPotential(Box<dyn Global<'a, S, Force = F, Potential = P>>),
-    BimolecularPotential(Box<dyn Bimolecular<'a, S, Force = F, Potential = P>>),
-    RandomForce(Box<dyn RandomForce<'a, S, Force = F>>),
-    Various(Box<Vec<ForceSpecies<'a, S, F, P>>>),
-}
-
 /// Global potential, Single particle interaction
 pub trait Global<'a, S: State> {
     type Force: Vector;

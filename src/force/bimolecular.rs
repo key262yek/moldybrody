@@ -6,13 +6,23 @@ use crate::vector::product::Distance;
 use crate::vector::product::Norm;
 use crate::vector::Scalar;
 use crate::vector::Vector;
+use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 use std::ops::Neg;
 use std::ops::Sub;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Gravity<T> {
-    const_g: T,
+    pub const_g: T,
+}
+
+impl<T> PartialEq for Gravity<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.const_g.eq(&other.const_g)
+    }
 }
 
 impl<T> Gravity<T> {
@@ -61,5 +71,21 @@ where
         let c = self.const_g * state.mass() * other.mass() / (r * r * r);
         dist.map_inplace(|x| *x = c * *x);
         *force += dist;
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_json::{from_str, to_string};
+
+    #[test]
+    fn test_serde_gravity() {
+        let a: Gravity<f64> = Gravity::new(0.5);
+        let expected = r#"{"const_g":0.5}"#;
+        assert_eq!(expected, to_string(&a).unwrap());
+
+        let expected: Gravity<f64> = from_str(&expected).unwrap();
+        assert_eq!(a, expected);
     }
 }

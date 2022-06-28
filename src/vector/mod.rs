@@ -1,6 +1,7 @@
 use approx::AbsDiffEq;
 use ndarray_linalg::types::Scalar as NDScalar;
 use num_traits::{One, Zero};
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use std::fmt::{Debug, Display};
@@ -42,6 +43,8 @@ pub trait Scalar:
     + SubAssign
     + DivAssign
     + MulAssign
+    + Serialize
+    + DeserializeOwned
 {
 }
 pub trait Float: NDScalar + Display + Debug + Scalar + Send + Sync + AbsDiffEq {}
@@ -50,7 +53,7 @@ pub mod arithmetic;
 pub mod basic;
 pub mod curvilinear;
 pub mod product;
-// pub mod vector_serde;
+pub mod vector_serde;
 
 pub trait Vector {
     type Item: Scalar;

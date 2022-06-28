@@ -8,6 +8,7 @@ use crate::vector::product::Cross;
 use crate::vector::product::Dot;
 use crate::vector::Dim;
 use crate::vector::Scalar;
+use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 use std::ops::Div;
 use std::ops::Index;
@@ -15,9 +16,18 @@ use std::ops::IndexMut;
 use std::ops::Mul;
 use std::ops::Neg;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstGravity<V: Vector> {
     pub acc: V,
+}
+
+impl<V> PartialEq for ConstGravity<V>
+where
+    V: Vector + PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.acc.eq(&other.acc)
+    }
 }
 
 impl<V: Vector> ConstGravity<V> {
@@ -59,6 +69,7 @@ where
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Lorentz<V: Vector + Dim<3>> {
     pub mag_field: V,
 }
@@ -67,6 +78,15 @@ impl<V: Vector + Dim<3>> Lorentz<V> {
     #[allow(dead_code)]
     pub fn new(mag_field: V) -> Self {
         Self { mag_field }
+    }
+}
+
+impl<V> PartialEq for Lorentz<V>
+where
+    V: Vector + Dim<3> + PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.mag_field.eq(&other.mag_field)
     }
 }
 
@@ -171,9 +191,12 @@ where
 mod test {
     use super::*;
     use crate::vector::basic::Map;
+    use crate::vector::Cartessian;
     use crate::vector::{Cartessian2D, Cartessian3D};
     use approx::assert_abs_diff_eq;
     use moldybrody_proc::State;
+    use serde_json::from_str;
+    use serde_json::to_string;
 
     #[test]
     fn test_constgravity() {
@@ -220,6 +243,17 @@ mod test {
         assert_eq!(gravity.force(&state), Cartessian2D::new([0f64, -100f64]));
         gravity.force_to(&state, &mut force);
         assert_eq!(force, Cartessian2D::new([0f64, -100f64]));
+    }
+
+    #[test]
+    fn test_serde_const_gravity() {
+        let acc = Cartessian::new([0f64, 10f64]);
+        let a: ConstGravity<Cartessian<f64, 2>> = ConstGravity::new(acc);
+        let expected = r#"{"acc":{"coord":[0.0,10.0]}}"#;
+        assert_eq!(expected, to_string(&a).unwrap());
+
+        let expected: ConstGravity<Cartessian<f64, 2>> = from_str(&expected).unwrap();
+        assert_eq!(a, expected);
     }
 
     #[test]
@@ -317,5 +351,16 @@ mod test {
 
         assert_abs_diff_eq!(interaction.potential(&state), 0f64);
         assert_abs_diff_eq!(interaction.force(&state), Cartessian2D::new([0f64, -10f64]));
+    }
+
+    #[test]
+    fn test_serde_lorentz() {
+        let mag_field = Cartessian::new([0f64, 0f64, 10f64]);
+        let a: Lorentz<Cartessian<f64, 3>> = Lorentz::new(mag_field);
+        let expected = r#"{"mag_field":{"coord":[0.0,0.0,10.0]}}"#;
+        assert_eq!(expected, to_string(&a).unwrap());
+
+        let expected: Lorentz<Cartessian<f64, 3>> = from_str(&expected).unwrap();
+        assert_eq!(a, expected);
     }
 }
