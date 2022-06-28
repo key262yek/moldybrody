@@ -29,8 +29,8 @@ ndarray-linalg = {version = "0.14.1", features = ["openblas-system"]}
 # openblas-src = {version = "0.10.4", features = ["cblas", "system"]}
 moldybrody_proc = {path = "moldybrody_proc"}
 clap = { version = "3.1.14", features = ["derive"] }
-rayon = "1.5.3"
-crossbeam = "0.8.1"
+serde = {version = "1.0", features = ["derive"]}
+serde_json = "1.0"
 
 [workspace]
 members = [

@@ -8,12 +8,10 @@
 //! 각각의 case에서 모두 같은 [rand crate](https://docs.rs/rand/0.8.4/rand/)의 Pcg64를 random number generator로 씁니다.
 //! 이를 declare하고 각 module에서 사용할 수 있도록 wrapping 해줍니다.
 
-use rand::prelude::Distribution;
 use crate::prelude::*;
-use rand_distr::{StandardNormal, Open01};
+use rand::prelude::Distribution;
 use rand::Rng;
-
-
+use rand_distr::{Open01, StandardNormal};
 
 /// Declare Pcg64 random number generator from a given seed
 ///
@@ -26,7 +24,7 @@ use rand::Rng;
 /// let seed : u128 = 12412398120480;
 /// let rng = rng_seed(seed);
 /// ```
-pub fn rng_seed(seed : u128) -> Pcg64{
+pub fn rng_seed(seed: u128) -> Pcg64 {
     const INC: u128 = 0xa02bdbf7bb3c0a7ac28fa16a64abf96;
     rand_pcg::Pcg64::new(seed, INC)
 }
@@ -45,8 +43,10 @@ pub fn rng_seed(seed : u128) -> Pcg64{
 /// let mut rng = rng_seed(seed);
 /// let uni = get_uniform(&mut rng);
 /// ```
-pub fn get_uniform<T>(rng : &mut Pcg64) -> T
-     where Open01: Distribution<T>{
+pub fn get_uniform<T>(rng: &mut Pcg64) -> T
+where
+    Open01: Distribution<T>,
+{
     rng.sample(Open01)
 }
 
@@ -64,7 +64,9 @@ pub fn get_uniform<T>(rng : &mut Pcg64) -> T
 /// let mut rng = rng_seed(seed);
 /// let gas = get_gaussian(&mut rng);
 /// ```
-pub fn get_gaussian<T>(rng : &mut Pcg64) -> T
-    where StandardNormal : Distribution<T>{
+pub fn get_gaussian<T>(rng: &mut Pcg64) -> T
+where
+    StandardNormal: Distribution<T>,
+{
     rng.sample(StandardNormal)
 }

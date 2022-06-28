@@ -16,14 +16,12 @@ extern crate doc_comment;
 extern crate ndarray;
 extern crate num_traits;
 
-pub mod state;
-pub mod vector;
-// pub mod system;
 pub mod approx;
 pub mod boundary;
 pub mod force;
+pub mod state;
+pub mod vector;
 // pub mod analysis;
-pub mod format_convert;
 pub mod iterator;
 pub mod rng;
 
