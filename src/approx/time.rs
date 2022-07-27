@@ -8,8 +8,14 @@
 // use crate::prelude::*;
 use crate::approx::TimeDiffIterator;
 use crate::approx::TimeIterator;
+use crate::argument::CommandBuilder;
 use crate::error::{Error, ErrorCode};
+// use clap::builder::Command;
+use clap::Arg;
+use clap::ArgMatches;
+
 use serde::{Deserialize, Serialize};
+use std::convert::From;
 
 /// Constant step time iterator
 ///
@@ -151,6 +157,73 @@ macro_rules! impl_const_step {
                 } else {
                     return None;
                 }
+            }
+        }
+
+        impl<'h> CommandBuilder<'h, 2> for ConstStep<$ty> {
+            const SUBCOMMAND: &'h str = "ConstStep";
+
+            // fn command() -> Command<'h> {
+            //     Command::new(Self::SUBCOMMAND)
+            //         .arg(
+            //             Arg::new("step_size")
+            //                 .short('t')
+            //                 .long("dt")
+            //                 .value_name("STEPSIZE")
+            //                 .takes_value(true)
+            //                 .help("Time step of iterator"),
+            //         )
+            //         .arg(
+            //             Arg::new("max_time")
+            //                 .short('m')
+            //                 .long("tmax")
+            //                 .value_name("TMAX")
+            //                 .default_value("0.0")
+            //                 .help("Maximum time to iterate."),
+            //         )
+            //         .after_help("Constant Step Time Iterator")
+            // }
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("step_size")
+                        .long("dt")
+                        .value_name("STEPSIZE")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(f64))
+                        .help("Time step of iterator"),
+                    Arg::new("max_time")
+                        .long("tmax")
+                        .value_name("TMAX")
+                        .default_value("0.0")
+                        .value_parser(clap::value_parser!(f64))
+                        .help("Maximum time to iterate."),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for ConstStep<$ty> {
+            fn from(m: &ArgMatches) -> Self {
+                // let subcmd = match m.subcommand_matches(<Self as CommandBuilder<'h>>::SUBCOMMAND) {
+                //     Some(x) => x,
+                //     None => panic!(
+                //         "There is no subcommand named {}",
+                //         <Self as CommandBuilder<'h>>::SUBCOMMAND
+                //     ),
+                // };
+                let dt: $ty = *m.get_one::<$ty>("step_size").unwrap();
+                let mut output = Self::new(dt).unwrap();
+
+                match m.get_one::<$ty>("max_time") {
+                    Some(&x) => {
+                        if x > 1e-15 as $ty {
+                            output.set_tmax(x).unwrap();
+                        }
+                    }
+                    None => panic!("Conversion of tmax in ConstStep is failed."),
+                }
+
+                output
             }
         }
     };
@@ -298,6 +371,103 @@ macro_rules! impl_exp_step {
                 }
             }
         }
+
+        impl<'h> CommandBuilder<'h, 4> for ExponentialStep<$ty> {
+            const SUBCOMMAND: &'h str = "ExponentialStep";
+
+            // fn command() -> Command<'h> {
+            //     Command::new(Self::SUBCOMMAND)
+            //         .arg(
+            //             Arg::new("min_step_size")
+            //                 .short('t')
+            //                 .long("dt_min")
+            //                 .value_name("MINSTEPSIZE")
+            //                 .takes_value(true)
+            //                 .help("Minimal time step of iterator"),
+            //         )
+            //         .arg(
+            //             Arg::new("max_step_size")
+            //                 .short('T')
+            //                 .long("dt_max")
+            //                 .value_name("MAXSTEPSIZE")
+            //                 .takes_value(true)
+            //                 .help("Maximal time step of iterator"),
+            //         )
+            //         .arg(
+            //             Arg::new("length")
+            //                 .short('l')
+            //                 .long("len")
+            //                 .value_name("LENGTH")
+            //                 .default_value("10")
+            //                 .help("Period to increase time step"),
+            //         )
+            //         .arg(
+            //             Arg::new("max_time")
+            //                 .short('m')
+            //                 .long("tmax")
+            //                 .value_name("TMAX")
+            //                 .default_value("0.0")
+            //                 .help("Maximum time to iterate. Default value 0.0 means MAX"),
+            //         )
+            //         .after_help("Time iterator with exponentially increasing step size")
+            // }
+
+            fn args() -> [Arg<'h>; 4] {
+                [
+                    Arg::new("min_step_size")
+                        .long("dt_min")
+                        .value_name("MINSTEPSIZE")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(f64))
+                        .help("Minimal time step of iterator"),
+                    Arg::new("max_step_size")
+                        .long("dt_max")
+                        .value_name("MAXSTEPSIZE")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(f64))
+                        .help("Maximal time step of iterator"),
+                    Arg::new("length")
+                        .long("len")
+                        .value_name("LENGTH")
+                        .default_value("10")
+                        .value_parser(clap::value_parser!(usize))
+                        .help("Period to increase time step"),
+                    Arg::new("max_time")
+                        .long("tmax")
+                        .value_name("TMAX")
+                        .default_value("0.0")
+                        .value_parser(clap::value_parser!(f64))
+                        .help("Maximum time to iterate. Default value 0.0 means MAX"),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for ExponentialStep<$ty> {
+            fn from(m: &ArgMatches) -> Self {
+                // let subcmd = match m.subcommand_matches(<Self as CommandBuilder<'h>>::SUBCOMMAND) {
+                //     Some(x) => x,
+                //     None => panic!(
+                //         "There is no subcommand named {}",
+                //         <Self as CommandBuilder<'h>>::SUBCOMMAND
+                //     ),
+                // };
+                let dt_min: $ty = *m.get_one::<$ty>("min_step_size").unwrap();
+                let dt_max: $ty = *m.get_one::<$ty>("max_step_size").unwrap();
+                let length: usize = *m.get_one::<usize>("length").unwrap();
+                let mut output = Self::new(dt_min, dt_max, length).unwrap();
+
+                match m.get_one::<$ty>("max_time") {
+                    Some(&x) => {
+                        if x > 1e-15 as $ty {
+                            output.set_tmax(x).unwrap();
+                        }
+                    }
+                    None => panic!("Conversion of tmax in ConstStep is failed."),
+                }
+
+                output
+            }
+        }
     };
 }
 
@@ -307,6 +477,8 @@ impl_exp_step!(f64);
 #[cfg(test)]
 mod test {
     use super::*;
+    use approx::assert_abs_diff_eq;
+    use clap::builder::Command;
     use serde_json::{from_str, to_string};
     #[test]
     fn test_serde_timeiter() {
@@ -327,5 +499,26 @@ mod test {
 
         let expected: ExponentialStep<f64> = from_str(&expected).unwrap();
         assert_eq!(exps, expected);
+    }
+
+    #[test]
+    fn test_clap_timeiter() {
+        let arg = Command::new("test")
+            .args(ConstStep::<f64>::args())
+            .get_matches_from(vec!["test", "--dt", "1e-4", "--tmax", "10"]);
+        let step = ConstStep::<f64>::from(&arg);
+        assert_abs_diff_eq!(step.dt, 1e-4, epsilon = 1e-12);
+        assert_abs_diff_eq!(step.tmax, 10.0, epsilon = 1e-4);
+
+        let arg = Command::new("test2")
+            .args(ExponentialStep::<f64>::args())
+            .get_matches_from(vec![
+                "test2", "--dt_min", "1e-4", "--dt_max", "1e-3", "--tmax", "10", "--len", "10",
+            ]);
+        let step = ExponentialStep::<f64>::from(&arg);
+        assert_abs_diff_eq!(step.dt_min, 1e-4, epsilon = 1e-12);
+        assert_abs_diff_eq!(step.dt_max, 1e-3, epsilon = 1e-12);
+        assert_abs_diff_eq!(step.tmax, 10.0, epsilon = 1e-3);
+        assert_eq!(step.length, 10);
     }
 }

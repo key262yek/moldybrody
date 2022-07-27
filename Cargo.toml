@@ -28,7 +28,7 @@ ndarray-linalg = {version = "0.14.1", features = ["openblas-system"]}
 # blas-src = {version = "0.8", features = ["openblas"] }
 # openblas-src = {version = "0.10.4", features = ["cblas", "system"]}
 moldybrody_proc = {path = "moldybrody_proc"}
-clap = { version = "3.1.14", features = ["derive"] }
+clap = "3.2"
 serde = {version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 
@@ -38,6 +38,7 @@ members = [
 ]
 exclude = [
     "examples/reproduce",
+    "examples/test_args",
 ]
 
 [features]

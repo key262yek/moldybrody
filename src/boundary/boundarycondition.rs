@@ -367,7 +367,7 @@ mod test {
             vel: Cartessian2D::new([2f64, -2f64]),
         };
 
-        let plane = Plane::new(&Cartessian2D::new([0f64, 1f64]), 0f64);
+        let plane = Plane::new(Cartessian2D::new([0f64, 1f64]), 0f64);
 
         let mut dx = Cartessian2D::new([1f64, -2f64]);
         let mut dv = Cartessian2D::new([0f64, -1f64]);

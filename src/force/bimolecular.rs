@@ -1,3 +1,4 @@
+use crate::argument::CommandBuilder;
 use crate::force::Bimolecular;
 use crate::state::Mass;
 use crate::state::State;
@@ -6,6 +7,7 @@ use crate::vector::product::Distance;
 use crate::vector::product::Norm;
 use crate::vector::Scalar;
 use crate::vector::Vector;
+use clap::{Arg, ArgMatches};
 use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 use std::ops::Neg;
@@ -74,9 +76,39 @@ where
     }
 }
 
+macro_rules! impl_gravity_clap {
+    ($ty : ident) => {
+        impl<'h> CommandBuilder<'h, 1> for Gravity<$ty> {
+            const SUBCOMMAND: &'h str = "Gravity";
+
+            fn args() -> [Arg<'h>; 1] {
+                [Arg::new("const_g")
+                    .short('G')
+                    .long("const_g")
+                    .value_name("CONSTG")
+                    .takes_value(true)
+                    .value_parser(clap::value_parser!($ty))
+                    .help("Gravitational constant G")]
+            }
+        }
+
+        impl From<&ArgMatches> for Gravity<$ty> {
+            fn from(m: &ArgMatches) -> Self {
+                let const_g: $ty = *m.get_one::<$ty>("const_g").unwrap();
+                Gravity::<$ty>::new(const_g)
+            }
+        }
+    };
+}
+
+impl_gravity_clap!(f32);
+impl_gravity_clap!(f64);
+
 #[cfg(test)]
 mod test {
     use super::*;
+    use approx::assert_abs_diff_eq;
+    use clap::builder::Command;
     use serde_json::{from_str, to_string};
 
     #[test]
@@ -87,5 +119,14 @@ mod test {
 
         let expected: Gravity<f64> = from_str(&expected).unwrap();
         assert_eq!(a, expected);
+    }
+
+    #[test]
+    fn test_clap_bimolecular() {
+        let arg = Command::new("test")
+            .args(Gravity::<f64>::args())
+            .get_matches_from(vec!["test", "--const_g", "1"]);
+        let gravity = Gravity::<f64>::from(&arg);
+        assert_abs_diff_eq!(gravity.const_g, 1.0);
     }
 }

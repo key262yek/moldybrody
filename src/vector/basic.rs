@@ -1,8 +1,12 @@
 // use std::convert::TryInto;
 // use std::fmt::Debug;
 
+use crate::error::Error;
 use crate::vector::{Cartessian, CartessianND};
 use num_traits::Zero;
+use std::convert::TryInto;
+use std::fmt::Debug;
+use std::str::FromStr;
 
 use std::{
     borrow::{Borrow, BorrowMut},
@@ -227,6 +231,24 @@ impl<'a, T, const N: usize> IntoIterator for &'a mut Cartessian<T, N> {
     }
 }
 
+impl<T, const N: usize> FromStr for Cartessian<T, N>
+where
+    T: Debug + FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Cartessian<T, N>, Error> {
+        Ok(Cartessian::<T, N>::new(
+            s.split(',')
+                .map(|x| x.parse::<T>().unwrap())
+                .collect::<Vec<T>>()
+                .try_into()
+                .unwrap(),
+        ))
+    }
+}
+
 // ===========================================================================================================
 // ===========================================================================================================
 
@@ -405,6 +427,22 @@ impl<T: Zero + Clone> Zeros for CartessianND<T> {
     }
 }
 
+impl<T> FromStr for CartessianND<T>
+where
+    T: Debug + FromStr,
+    <T as FromStr>::Err: Debug,
+{
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<CartessianND<T>, Error> {
+        Ok(CartessianND::<T>::new(
+            s.split(',')
+                .map(|x| x.parse::<T>().unwrap())
+                .collect::<Vec<T>>(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::vector::basic::Map;
@@ -483,5 +521,21 @@ mod test {
     fn test_default() {
         let a = Cartessian2D::<i32>::default();
         assert_eq!(a, Cartessian2D::new([0, 0]));
+    }
+
+    #[test]
+    fn test_from_str() {
+        let a = "0,1";
+        let expected = Cartessian2D::<i32>::new([0, 1]);
+        assert_eq!(expected, a.parse::<Cartessian2D<i32>>().unwrap());
+
+        let expected = Cartessian2D::<f64>::new([0.0, 1.0]);
+        assert_eq!(expected, a.parse::<Cartessian2D<f64>>().unwrap());
+
+        let expected = CartessianND::<i32>::new(vec![0, 1]);
+        assert_eq!(expected, a.parse::<CartessianND<i32>>().unwrap());
+
+        let expected = CartessianND::<f64>::new(vec![0.0, 1.0]);
+        assert_eq!(expected, a.parse::<CartessianND<f64>>().unwrap());
     }
 }

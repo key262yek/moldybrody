@@ -1,4 +1,5 @@
 use super::Global;
+use crate::argument::CommandBuilder;
 use crate::force::Vector;
 use crate::state::Charge;
 use crate::state::HasVelocity;
@@ -8,7 +9,11 @@ use crate::vector::product::Cross;
 use crate::vector::product::Dot;
 use crate::vector::Dim;
 use crate::vector::Scalar;
+use clap::Arg;
+use clap::ArgMatches;
+use core::str::FromStr;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use std::ops::AddAssign;
 use std::ops::Div;
 use std::ops::Index;
@@ -66,6 +71,33 @@ where
         for (f, s) in force.into_iter().zip(self.acc.into_iter()) {
             *f += state.mass() * *s;
         }
+    }
+}
+
+impl<'h, V> CommandBuilder<'h, 1> for ConstGravity<V>
+where
+    V: Vector,
+{
+    const SUBCOMMAND: &'h str = "ConstGravity";
+
+    fn args() -> [Arg<'h>; 1] {
+        [Arg::new("acc")
+            .short('g')
+            .long("acc")
+            .value_name("ACC")
+            .takes_value(true)
+            .help("Gravitational Acceleration")]
+    }
+}
+
+impl<V> From<&ArgMatches> for ConstGravity<V>
+where
+    V: Vector + FromStr + Clone + Send + Sync + 'static,
+    <V as FromStr>::Err: Debug,
+{
+    fn from(m: &ArgMatches) -> Self {
+        let acc: V = m.get_one::<String>("acc").unwrap().parse().unwrap();
+        ConstGravity::<V>::new(acc)
     }
 }
 
@@ -146,6 +178,33 @@ where
     }
 }
 
+impl<'h, V> CommandBuilder<'h, 1> for Lorentz<V>
+where
+    V: Vector + Dim<3>,
+{
+    const SUBCOMMAND: &'h str = "Lorentz";
+
+    fn args() -> [Arg<'h>; 1] {
+        [Arg::new("mag_field")
+            .short('B')
+            .long("mag")
+            .value_name("BFIELD")
+            .takes_value(true)
+            .help("Uniform magnetic field")]
+    }
+}
+
+impl<V> From<&ArgMatches> for Lorentz<V>
+where
+    V: Vector + Dim<3> + FromStr + Clone + Send + Sync + 'static,
+    <V as FromStr>::Err: Debug,
+{
+    fn from(m: &ArgMatches) -> Self {
+        let mag_field: V = m.get_one::<String>("mag_field").unwrap().parse().unwrap();
+        Lorentz::<V>::new(mag_field)
+    }
+}
+
 struct GeneralGlobal<S: State, F: Vector, P> {
     potential: fn(&S) -> P,
     force: fn(&S) -> F,
@@ -194,6 +253,7 @@ mod test {
     use crate::vector::Cartessian;
     use crate::vector::{Cartessian2D, Cartessian3D};
     use approx::assert_abs_diff_eq;
+    use clap::builder::Command;
     use moldybrody_proc::State;
     use serde_json::from_str;
     use serde_json::to_string;
@@ -362,5 +422,23 @@ mod test {
 
         let expected: Lorentz<Cartessian<f64, 3>> = from_str(&expected).unwrap();
         assert_eq!(a, expected);
+    }
+
+    #[test]
+    fn test_clap_global() {
+        let arg = Command::new("test")
+            .args(ConstGravity::<Cartessian2D<f64>>::args())
+            .get_matches_from(vec!["test", "--acc", "0,-10"]);
+        let gravity = ConstGravity::<Cartessian2D<f64>>::from(&arg);
+        assert_abs_diff_eq!(gravity.acc, Cartessian2D::<f64>::new([0.0, -10.0]));
+
+        let arg = Command::new("test2")
+            .args(Lorentz::<Cartessian3D<f64>>::args())
+            .get_matches_from(vec!["test2", "--mag", "0,0,-10"]);
+        let lorentz = Lorentz::<Cartessian3D<f64>>::from(&arg);
+        assert_abs_diff_eq!(
+            lorentz.mag_field,
+            Cartessian3D::<f64>::new([0.0, 0.0, -10.0])
+        );
     }
 }

@@ -1,5 +1,6 @@
 // use crate::boundary::BoundaryCondition;
 // use crate::boundary::AfterMove;
+use crate::argument::CommandBuilder;
 use crate::boundary::NonPeriodic;
 use crate::boundary::Periodic;
 use crate::boundary::{FloatBoundary, IntBoundary};
@@ -7,10 +8,11 @@ use crate::vector::basic::Map;
 use crate::vector::product::Norm;
 use crate::{prelude::Error, vector::Dim};
 use approx::AbsDiffEq;
+use clap::Arg;
+use clap::ArgMatches;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::fmt::Formatter;
-use std::fmt::LowerExp;
 use std::fmt::{self, Display};
 use std::ops::Div;
 use std::ops::Rem;
@@ -20,6 +22,7 @@ use crate::vector::Scalar;
 use crate::vector::Vector;
 use crate::vector::{Cartessian, CartessianND};
 use serde::{Deserialize, Serialize};
+use serde_json::from_str;
 use std::ops::Neg;
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -55,6 +58,64 @@ impl<T> SimplePlane<T> {
 }
 
 impl<T> NonPeriodic for SimplePlane<T> {}
+
+macro_rules! impl_arg_simpleplane {
+    ($ty : ident) => {
+        impl<'h> CommandBuilder<'h, 3> for SimplePlane<$ty> {
+            const SUBCOMMAND: &'h str = "SimplePlane";
+
+            fn args() -> [Arg<'h>; 3] {
+                [
+                    Arg::new("idx")
+                        .short('i')
+                        .long("idx")
+                        .value_name("IDX")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(usize))
+                        .help("Index of plane position"),
+                    Arg::new("pos")
+                        .short('p')
+                        .long("pos")
+                        .value_name("POS")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!($ty))
+                        .help("Position of plane"),
+                    Arg::new("direction")
+                        .short('d')
+                        .long("dir")
+                        .value_name("DIR")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(usize))
+                        .help("Direction to interior. 0 : Negative, 1 : Positive"),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for SimplePlane<$ty> {
+            fn from(m: &ArgMatches) -> Self {
+                let idx: usize = *m.get_one::<usize>("idx").unwrap();
+                let pos: $ty = *m.get_one::<$ty>("pos").unwrap();
+                let dir: Direction = match m.get_one::<usize>("direction") {
+                    Some(&0) => Direction::Negative,
+                    Some(&1) => Direction::Positive,
+                    Some(&_) | None => {
+                        panic!("Invalid argument input for direction. Only 0 and 1 are valid.");
+                    }
+                };
+                SimplePlane::<$ty>::new(idx, pos, dir)
+            }
+        }
+    };
+}
+
+impl_arg_simpleplane!(f32);
+impl_arg_simpleplane!(f64);
+impl_arg_simpleplane!(i8);
+impl_arg_simpleplane!(i16);
+impl_arg_simpleplane!(i32);
+impl_arg_simpleplane!(i64);
+impl_arg_simpleplane!(i128);
+impl_arg_simpleplane!(isize);
 
 macro_rules! impl_float_simpleplane {
     ($ty : ident) => {
@@ -569,66 +630,65 @@ impl_int_simpleplane!(i64);
 impl_int_simpleplane!(i128);
 impl_int_simpleplane!(isize);
 
-impl<T: Display> Display for SimplePlane<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.dir_in {
-            Direction::Positive => write!(
-                f,
-                "SimplePlane at x[{}] = {} with positive to inside",
-                self.idx, self.pos
-            ),
-            Direction::Negative => write!(
-                f,
-                "SimplePlane at x[{}] = {} with negative to inside",
-                self.idx, self.pos
-            ),
-        }
-    }
-}
+// impl<T: Display> Display for SimplePlane<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self.dir_in {
+//             Direction::Positive => write!(
+//                 f,
+//                 "SimplePlane at x[{}] = {} with positive to inside",
+//                 self.idx, self.pos
+//             ),
+//             Direction::Negative => write!(
+//                 f,
+//                 "SimplePlane at x[{}] = {} with negative to inside",
+//                 self.idx, self.pos
+//             ),
+//         }
+//     }
+// }
 
-impl<T: LowerExp> LowerExp for SimplePlane<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.dir_in {
-            Direction::Positive => {
-                write!(f, "SimplePlane at x[{}] = ", self.idx)?;
-                LowerExp::fmt(&self.pos, f)?;
-                write!(f, " with positive to inside")
-            }
-            Direction::Negative => {
-                write!(f, "SimplePlane at x[{}] = ", self.idx)?;
-                LowerExp::fmt(&self.pos, f)?;
-                write!(f, " with negative to inside")
-            }
-        }
-    }
-}
+// impl<T: LowerExp> LowerExp for SimplePlane<T> {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+//         match self.dir_in {
+//             Direction::Positive => {
+//                 write!(f, "SimplePlane at x[{}] = ", self.idx)?;
+//                 LowerExp::fmt(&self.pos, f)?;
+//                 write!(f, " with positive to inside")
+//             }
+//             Direction::Negative => {
+//                 write!(f, "SimplePlane at x[{}] = ", self.idx)?;
+//                 LowerExp::fmt(&self.pos, f)?;
+//                 write!(f, " with negative to inside")
+//             }
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Plane<V: Vector> {
-    normal_vec: V, // direction : inside
+    normal_vec: V, // direction of normal vec : inside
     constant: <V as Vector>::Item,
 }
 
-impl<'a, V> Plane<V>
+impl<V> Plane<V>
 where
     V: Vector
         + Clone
         + Norm
         + Div<<V as Norm>::Output, Output = V>
-        + Dot<&'a V, Output = <V as Vector>::Item>
-        + 'a,
+        + Dot<V, Output = <V as Vector>::Item>,
     <V as Vector>::Item: Clone + Div<<V as Norm>::Output, Output = <V as Vector>::Item> + Debug,
     <V as Norm>::Output: Copy,
 {
-    pub fn new(normal_vec: &V, constant: <V as Vector>::Item) -> Self {
+    pub fn new(normal_vec: V, constant: <V as Vector>::Item) -> Self {
         let n = normal_vec.norm_l2();
         Self {
-            normal_vec: (*normal_vec).clone() / n,
+            normal_vec: normal_vec.clone() / n,
             constant: constant / n,
         }
     }
 
-    pub fn from_point(normal_vec: &'a V, point: &'a V) -> Self {
+    pub fn from_point(normal_vec: V, point: V) -> Self {
         let n = normal_vec.norm_l2();
         let vec = normal_vec.clone() / n;
         let c = vec.dot(point);
@@ -640,6 +700,80 @@ where
 }
 
 impl<V: Vector> NonPeriodic for Plane<V> {}
+
+macro_rules! impl_clap_plane {
+    (fixed, $ty : ident) => {
+        impl<'h, const N: usize> CommandBuilder<'h, 2> for Plane<Cartessian<$ty, N>> {
+            const SUBCOMMAND: &'h str = "Plane";
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("normal_vec")
+                        .short('n')
+                        .long("normal")
+                        .value_name("NORMAL")
+                        .takes_value(true)
+                        .help("Normal vector of plane."),
+                    Arg::new("constant")
+                        .short('c')
+                        .long("const")
+                        .value_name("CONST")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!($ty))
+                        .help("Constant of plane."),
+                ]
+            }
+        }
+
+        impl<const N: usize> From<&ArgMatches> for Plane<Cartessian<$ty, N>> {
+            fn from(m: &ArgMatches) -> Self {
+                let normal: Cartessian<$ty, N> =
+                    m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
+                let constant: $ty = *m.get_one::<$ty>("constant").unwrap();
+                Plane::<Cartessian<$ty, N>>::new(normal, constant)
+            }
+        }
+    };
+    (nd, $ty : ident) => {
+        impl<'h> CommandBuilder<'h, 2> for Plane<CartessianND<$ty>> {
+            const SUBCOMMAND: &'h str = "Plane";
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("normal_vec")
+                        .short('n')
+                        .long("normal")
+                        .value_name("NORMAL")
+                        .takes_value(true)
+                        .help("Normal vector of plane."),
+                    Arg::new("constant")
+                        .short('c')
+                        .long("const")
+                        .value_name("CONST")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!($ty))
+                        .help("Constant of plane."),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for Plane<CartessianND<$ty>> {
+            fn from(m: &ArgMatches) -> Self {
+                let normal: CartessianND<$ty> =
+                    m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
+                let constant: $ty = *m.get_one::<$ty>("constant").unwrap();
+                Plane::<CartessianND<$ty>>::new(normal, constant)
+            }
+        }
+    };
+    ($ty : ident) => {
+        impl_clap_plane!(fixed, $ty);
+        impl_clap_plane!(nd, $ty);
+    };
+}
+
+impl_clap_plane!(f32);
+impl_clap_plane!(f64);
 
 macro_rules! impl_float_plane {
     ($ty : ident) => {
@@ -860,6 +994,48 @@ impl<T: PartialOrd + Copy + AbsDiffEq> SimplePlanePair<T> {
         Some(Self { idx, pos: [a, b] })
     }
 }
+
+macro_rules! impl_arg_simpleplanepair {
+    ($ty : ident) => {
+        impl<'h> CommandBuilder<'h, 2> for SimplePlanePair<$ty> {
+            const SUBCOMMAND: &'h str = "SimplePlanePair";
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("idx")
+                        .short('i')
+                        .long("idx")
+                        .value_name("IDX")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!(usize))
+                        .help("Index of plane position"),
+                    Arg::new("pos")
+                        .short('p')
+                        .long("pos")
+                        .value_name("POS")
+                        .takes_value(true)
+                        .help("Positions of plane. format : [c1,c2]"),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for SimplePlanePair<$ty> {
+            fn from(m: &ArgMatches) -> Self {
+                let idx: usize = *m.get_one::<usize>("idx").unwrap();
+                let pos: [$ty; 2] = from_str(m.get_one::<String>("pos").unwrap()).unwrap();
+                SimplePlanePair::<$ty>::new(idx, pos).unwrap()
+            }
+        }
+    };
+}
+
+impl_arg_simpleplanepair!(f32);
+impl_arg_simpleplanepair!(f64);
+impl_arg_simpleplanepair!(i8);
+impl_arg_simpleplanepair!(i16);
+impl_arg_simpleplanepair!(i32);
+impl_arg_simpleplanepair!(i64);
+impl_arg_simpleplanepair!(isize);
 
 macro_rules! impl_float_simpleplanepair {
     ($ty : ident) => {
@@ -1365,6 +1541,78 @@ where
     }
 }
 
+macro_rules! impl_planepair_clap {
+    (fixed, $ty : ident) => {
+        impl<'h, const N: usize> CommandBuilder<'h, 2> for PlanePair<Cartessian<$ty, N>> {
+            const SUBCOMMAND: &'h str = "PlanePair";
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("normal_vec")
+                        .short('n')
+                        .long("normal")
+                        .value_name("NORMAL")
+                        .takes_value(true)
+                        .help("Normal vector of plane."),
+                    Arg::new("constant")
+                        .short('c')
+                        .long("const")
+                        .value_name("CONST")
+                        .takes_value(true)
+                        .help("Constant of plane. format : [c1,c2]"),
+                ]
+            }
+        }
+
+        impl<const N: usize> From<&ArgMatches> for PlanePair<Cartessian<$ty, N>> {
+            fn from(m: &ArgMatches) -> Self {
+                let normal: Cartessian<$ty, N> =
+                    m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
+                let constant: [$ty; 2] = from_str(m.get_one::<String>("constant").unwrap()).unwrap();
+                PlanePair::<Cartessian<$ty, N>>::new(normal, constant).unwrap()
+            }
+        }
+    };
+    (nd, $ty : ident) => {
+        impl<'h> CommandBuilder<'h, 2> for PlanePair<CartessianND<$ty>> {
+            const SUBCOMMAND: &'h str = "PlanePair";
+
+            fn args() -> [Arg<'h>; 2] {
+                [
+                    Arg::new("normal_vec")
+                        .short('n')
+                        .long("normal")
+                        .value_name("NORMAL")
+                        .takes_value(true)
+                        .help("Normal vector of plane."),
+                    Arg::new("constant")
+                        .short('c')
+                        .long("const")
+                        .value_name("CONST")
+                        .takes_value(true)
+                        .help("Constant of plane. format : [c1,c2]"),
+                ]
+            }
+        }
+
+        impl From<&ArgMatches> for PlanePair<CartessianND<$ty>> {
+            fn from(m: &ArgMatches) -> Self {
+                let normal: CartessianND<$ty> =
+                    m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
+                let constant: [$ty; 2] = from_str(m.get_one::<String>("constant").unwrap()).unwrap();
+                PlanePair::<CartessianND<$ty>>::new(normal, constant).unwrap()
+            }
+        }
+    };
+    ($ty : ident) => {
+        impl_planepair_clap!(fixed, $ty);
+        impl_planepair_clap!(nd, $ty);
+    };
+}
+
+impl_planepair_clap!(f32);
+impl_planepair_clap!(f64);
+
 macro_rules! impl_float_planepair {
     ($ty : ident) => {
         impl<const N: usize> FloatBoundary<Cartessian<$ty, N>> for PlanePair<Cartessian<$ty, N>> {
@@ -1686,6 +1934,51 @@ impl_float_planepair!(f64);
 pub struct SimpleBox<T, const N: usize> {
     pub planes: [SimplePlanePair<T>; N],
 }
+
+macro_rules! impl_clap_simplebox {
+    ($ty : ident, $n : expr) => {
+        impl<'h> CommandBuilder<'h, 1> for SimpleBox<$ty, $n> {
+            const SUBCOMMAND: &'h str = "SimpleBox";
+
+            fn args() -> [Arg<'h>; 1] {
+                [Arg::new("pairs")
+                    .short('p')
+                    .long("pairs")
+                    .value_name("PAIRS")
+                    .takes_value(true)
+                    .help("Constant pairs. format : [[1.0, 2.0], [3.0, 4.0]]"),]
+            }
+        }
+
+        impl From<&ArgMatches> for SimpleBox<$ty, $n> {
+            fn from(m: &ArgMatches) -> Self {
+                let pairs: [[$ty; 2]; $n] = from_str(m.get_one::<String>("pairs").unwrap()).unwrap();
+                SimpleBox::<$ty, $n>::from_pairs(pairs)
+            }
+        }
+    };
+    ($ty : ident) => {
+        impl_clap_simplebox!($ty, 1);
+        impl_clap_simplebox!($ty, 2);
+        impl_clap_simplebox!($ty, 3);
+        impl_clap_simplebox!($ty, 4);
+        impl_clap_simplebox!($ty, 5);
+        impl_clap_simplebox!($ty, 6);
+        impl_clap_simplebox!($ty, 7);
+        impl_clap_simplebox!($ty, 8);
+        impl_clap_simplebox!($ty, 9);
+        impl_clap_simplebox!($ty, 10);
+    };
+}
+
+impl_clap_simplebox!(f32);
+impl_clap_simplebox!(f64);
+impl_clap_simplebox!(i8);
+impl_clap_simplebox!(i16);
+impl_clap_simplebox!(i32);
+impl_clap_simplebox!(i64);
+impl_clap_simplebox!(isize);
+
 
 impl<T, const N: usize> SimpleBox<T, N> {
     pub fn new(planes: [SimplePlanePair<T>; N]) -> Result<Self, Error>
@@ -2105,17 +2398,91 @@ pub struct Cube<V: Vector> {
 }
 
 impl<V: Vector> Cube<V> {
-    pub fn new(center: &V, radius: <V as Vector>::Item) -> Self
+    pub fn new(center: V, radius: <V as Vector>::Item) -> Self
     where
-        V: Clone,
-        <V as Vector>::Item: Clone,
+        <V as Vector>::Item: Copy,
     {
         Self {
-            center: center.clone(),
-            radius: radius.clone(),
+            center: center,
+            radius: radius,
         }
     }
 }
+
+macro_rules! impl_clap_cube {
+    (fixed, $ty : ident) => {
+        impl<'h, const N : usize> CommandBuilder<'h, 2> for Cube<Cartessian<$ty, N>> {
+            const SUBCOMMAND: &'h str = "Cube";
+
+            fn args() -> [Arg<'h>; 2] {
+                [Arg::new("center")
+                    .short('c')
+                    .long("center")
+                    .value_name("CENTER")
+                    .takes_value(true)
+                    .help("Center of cube. format : 0,2,3"),
+                 Arg::new("radius")
+                    .short('r')
+                    .long("radius")
+                    .value_name("RADIUS")
+                    .takes_value(true)
+                    .value_parser(clap::value_parser!($ty))
+                    .help("Radius of cube"),]
+            }
+        }
+
+        impl<const N : usize> From<&ArgMatches> for Cube<Cartessian<$ty, N>> {
+            fn from(m: &ArgMatches) -> Self {
+                let center : Cartessian<$ty, N> = m.get_one::<String>("center").unwrap().parse().unwrap();
+                let radius: $ty = *m.get_one::<$ty>("radius").unwrap();
+                Cube::<Cartessian<$ty, N>>::new(center, radius)
+            }
+        }
+    };
+    (nd, $ty : ident) => {
+        impl<'h> CommandBuilder<'h, 2> for Cube<CartessianND<$ty>> {
+            const SUBCOMMAND: &'h str = "Cube";
+
+            fn args() -> [Arg<'h>; 2] {
+                [Arg::new("center")
+                    .short('c')
+                    .long("center")
+                    .value_name("CENTER")
+                    .takes_value(true)
+                    .help("Center of cube. format : 0,2,3"),
+                 Arg::new("radius")
+                    .short('r')
+                    .long("radius")
+                    .value_name("RADIUS")
+                    .takes_value(true)
+                    .value_parser(clap::value_parser!($ty))
+                    .help("Radius of cube"),]
+            }
+        }
+
+        impl From<&ArgMatches> for Cube<CartessianND<$ty>> {
+            fn from(m: &ArgMatches) -> Self {
+                let center : CartessianND<$ty> = m.get_one::<String>("center").unwrap().parse().unwrap();
+                let radius: $ty = *m.get_one::<$ty>("radius").unwrap();
+                Cube::<CartessianND<$ty>>::new(center, radius)
+            }
+        }
+    };
+    ($ty : ident) => {
+        impl_clap_cube!(fixed, $ty);
+        impl_clap_cube!(nd, $ty);
+    }
+}
+
+impl_clap_cube!(f32);
+impl_clap_cube!(f64);
+impl_clap_cube!(i8);
+impl_clap_cube!(i16);
+impl_clap_cube!(i32);
+impl_clap_cube!(i64);
+impl_clap_cube!(isize);
+
+
 
 macro_rules! impl_float_cube {
     ($ty : ident) => {
@@ -2807,6 +3174,7 @@ mod test {
     use super::*;
     use crate::vector::{Cartessian2D, Cartessian3D, CartessianND};
     use approx::assert_abs_diff_eq;
+    use clap::Command;
 
     #[test]
     fn test_simpleplane() {
@@ -2956,9 +3324,21 @@ mod test {
     }
 
     #[test]
+    fn test_simpleplane_clap() {
+        let arg = Command::new("test")
+            .args(SimplePlane::<f64>::args())
+            .get_matches_from(vec!["test", "--idx", "0", "--pos", "1", "--dir", "0"]);
+        let simpleplane = SimplePlane::<f64>::from(&arg);
+        assert_eq!(
+            simpleplane,
+            SimplePlane::<f64>::new(0, 1.0, Direction::Negative)
+        )
+    }
+
+    #[test]
     fn test_plane() {
         // 2d
-        let plane = Plane::new(&Cartessian2D::new([1f64, 1f64]), 0f64);
+        let plane = Plane::new(Cartessian2D::new([1f64, 1f64]), 0f64);
         assert_abs_diff_eq!(plane.normal_vec, Cartessian2D::new([1.0 / 2f64.sqrt(); 2]));
 
         let mut a = Cartessian2D::new([2f64; 2]);
@@ -2992,7 +3372,7 @@ mod test {
         );
 
         // nd
-        let plane = Plane::new(&CartessianND::new(vec![1f64, 1f64]), 0f64);
+        let plane = Plane::new(CartessianND::new(vec![1f64, 1f64]), 0f64);
         assert_abs_diff_eq!(
             plane.normal_vec,
             CartessianND::new(vec![1.0 / 2f64.sqrt(); 2])
@@ -3032,7 +3412,7 @@ mod test {
     #[test]
     #[should_panic]
     fn test_plane_panic() {
-        let plane = Plane::new(&CartessianND::new(vec![3f64; 3]), 0f64);
+        let plane = Plane::new(CartessianND::new(vec![3f64; 3]), 0f64);
 
         let a = CartessianND::new(vec![2f64; 2]);
         plane.check_inclusion(&a);
@@ -3041,11 +3421,23 @@ mod test {
     #[test]
     #[should_panic]
     fn test_plane_intersect() {
-        let plane = Plane::new(&CartessianND::new(vec![3f64; 2]), 0f64);
+        let plane = Plane::new(CartessianND::new(vec![3f64; 2]), 0f64);
 
         let a = CartessianND::new(vec![-2f64; 2]);
         let movement = CartessianND::new(vec![0f64; 2]);
         plane.find_intersect(&a, &movement);
+    }
+
+    #[test]
+    fn test_plane_clap() {
+        let arg = Command::new("test")
+            .args(Plane::<Cartessian2D<f64>>::args())
+            .get_matches_from(vec!["test", "--normal", "0,1", "--const", "0"]);
+        let plane = Plane::<Cartessian2D<f64>>::from(&arg);
+        assert_eq!(
+            plane,
+            Plane::<Cartessian2D<f64>>::new(Cartessian2D::<f64>::new([0.0, 1.0]), 0.0)
+        )
     }
 
     #[test]
@@ -3309,6 +3701,18 @@ mod test {
     }
 
     #[test]
+    fn test_simpleplanepair_clap() {
+        let arg = Command::new("test")
+            .args(SimplePlanePair::<f64>::args())
+            .get_matches_from(vec!["test", "--idx", "0", "--pos", "[1,2]"]);
+        let simpleplanepair = SimplePlanePair::<f64>::from(&arg);
+        assert_eq!(
+            simpleplanepair,
+            SimplePlanePair::<f64>::new(0, [1.0, 2.0]).unwrap()
+        )
+    }
+
+    #[test]
     #[should_panic]
     fn test_planepair_panic() {
         let planepair = SimplePlanePair::new(0, [1f64, 0f64]).unwrap();
@@ -3470,6 +3874,19 @@ mod test {
             planepair.find_pair(&pos2),
             CartessianND::new(vec![0.5f64, 1f64])
         );
+    }
+
+    #[test]
+    fn test_planepair_clap() {
+        let arg = Command::new("test")
+            .args(PlanePair::<Cartessian2D<f64>>::args())
+            .get_matches_from(vec!["test", "--normal", "0,1", "--const", "[1,2]"]);
+        let simpleplanepair = PlanePair::<Cartessian2D<f64>>::from(&arg);
+        assert_eq!(
+            simpleplanepair,
+            PlanePair::<Cartessian2D<f64>>::new(Cartessian2D::<f64>::new([0.0, 1.0]), [1.0, 2.0])
+                .unwrap()
+        )
     }
 
     #[test]
@@ -3702,8 +4119,20 @@ mod test {
     }
 
     #[test]
+    fn test_simplebox_clap() {
+        let arg = Command::new("test")
+            .args(SimpleBox::<f64, 2>::args())
+            .get_matches_from(vec!["test", "--pairs", "[[1,2],[2,3]]"]);
+        let simplebox = SimpleBox::<f64, 2>::from(&arg);
+        assert_eq!(
+            simplebox,
+            SimpleBox::<f64, 2>::from_pairs([[1.0, 2.0], [2.0, 3.0]])
+        )
+    }
+
+    #[test]
     fn test_cube() {
-        let cube = Cube::new(&Cartessian3D::new([0; 3]), 3);
+        let cube = Cube::new(Cartessian3D::new([0; 3]), 3);
         assert_eq!(&cube.center, &Cartessian3D::new([0; 3]));
         assert_eq!(&cube.radius, &3);
 
@@ -3789,7 +4218,7 @@ mod test {
     #[test]
     fn test_cube_periodic() {
         // Float, Fixed size
-        let cube: Cube<Cartessian3D<f64>> = Cube::new(&Cartessian3D::new([0f64; 3]), 2.0);
+        let cube: Cube<Cartessian3D<f64>> = Cube::new(Cartessian3D::new([0f64; 3]), 2.0);
 
         let mut pos = Cartessian3D::new([0f64; 3]);
         let mut res = pos.clone();
@@ -3818,7 +4247,7 @@ mod test {
         assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Float, Free size
-        let cube: Cube<CartessianND<f64>> = Cube::new(&CartessianND::new(vec![0f64; 3]), 2.0);
+        let cube: Cube<CartessianND<f64>> = Cube::new(CartessianND::new(vec![0f64; 3]), 2.0);
 
         let mut pos = CartessianND::new(vec![0f64; 3]);
         let mut res = pos.clone();
@@ -3847,7 +4276,7 @@ mod test {
         assert_abs_diff_eq!(&pos, &res, epsilon = 1e-3);
 
         // Int, Fixed size
-        let cube: Cube<Cartessian3D<i32>> = Cube::new(&Cartessian3D::new([0i32; 3]), 2);
+        let cube: Cube<Cartessian3D<i32>> = Cube::new(Cartessian3D::new([0i32; 3]), 2);
 
         let mut pos = Cartessian3D::new([0i32; 3]);
         let mut res = pos.clone();
@@ -3876,7 +4305,7 @@ mod test {
         assert_eq!(&pos, &res);
 
         // Int, Free size
-        let cube: Cube<CartessianND<i32>> = Cube::new(&CartessianND::new(vec![0i32; 3]), 2);
+        let cube: Cube<CartessianND<i32>> = Cube::new(CartessianND::new(vec![0i32; 3]), 2);
 
         let mut pos = CartessianND::new(vec![0i32; 3]);
         let mut res = pos.clone();
@@ -4051,7 +4480,7 @@ mod test {
         // Plane
         let normal_vec = Cartessian2D::new([0.0, 1.0]);
         let constant = 1.0f64;
-        let plane: Plane<Cartessian2D<f64>> = Plane::new(&normal_vec, constant);
+        let plane: Plane<Cartessian2D<f64>> = Plane::new(normal_vec, constant);
         let expected = r#"{"normal_vec":{"coord":[0.0,1.0]},"constant":1.0}"#;
         assert_eq!(expected, to_string(&plane).unwrap());
 
