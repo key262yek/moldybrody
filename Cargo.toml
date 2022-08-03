@@ -24,7 +24,8 @@ ndarray = "0.15.2"
 num-traits = "0.2.0"
 num-complex = "0.4.0"
 approx = {version = "0.5.0", features = ["num-complex"]}
-ndarray-linalg = {version = "0.14.1", features = ["openblas-system"]}
+ndarray-linalg = "0.14.1"
+# ndarray-linalg = {version = "0.14.1", features = ["openblas-system"]}
 # blas-src = {version = "0.8", features = ["openblas"] }
 # openblas-src = {version = "0.10.4", features = ["cblas", "system"]}
 moldybrody_proc = {path = "moldybrody_proc"}
