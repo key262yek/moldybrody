@@ -62,8 +62,6 @@ impl<T> NonPeriodic for SimplePlane<T> {}
 macro_rules! impl_arg_simpleplane {
     ($ty : ident) => {
         impl<'h> CommandBuilder<'h, 3> for SimplePlane<$ty> {
-            const SUBCOMMAND: &'h str = "SimplePlane";
-
             fn args() -> [Arg<'h>; 3] {
                 [
                     Arg::new("idx")
@@ -704,8 +702,6 @@ impl<V: Vector> NonPeriodic for Plane<V> {}
 macro_rules! impl_clap_plane {
     (fixed, $ty : ident) => {
         impl<'h, const N: usize> CommandBuilder<'h, 2> for Plane<Cartessian<$ty, N>> {
-            const SUBCOMMAND: &'h str = "Plane";
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("normal_vec")
@@ -736,8 +732,6 @@ macro_rules! impl_clap_plane {
     };
     (nd, $ty : ident) => {
         impl<'h> CommandBuilder<'h, 2> for Plane<CartessianND<$ty>> {
-            const SUBCOMMAND: &'h str = "Plane";
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("normal_vec")
@@ -998,8 +992,6 @@ impl<T: PartialOrd + Copy + AbsDiffEq> SimplePlanePair<T> {
 macro_rules! impl_arg_simpleplanepair {
     ($ty : ident) => {
         impl<'h> CommandBuilder<'h, 2> for SimplePlanePair<$ty> {
-            const SUBCOMMAND: &'h str = "SimplePlanePair";
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("idx")
@@ -1544,8 +1536,6 @@ where
 macro_rules! impl_planepair_clap {
     (fixed, $ty : ident) => {
         impl<'h, const N: usize> CommandBuilder<'h, 2> for PlanePair<Cartessian<$ty, N>> {
-            const SUBCOMMAND: &'h str = "PlanePair";
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("normal_vec")
@@ -1575,8 +1565,6 @@ macro_rules! impl_planepair_clap {
     };
     (nd, $ty : ident) => {
         impl<'h> CommandBuilder<'h, 2> for PlanePair<CartessianND<$ty>> {
-            const SUBCOMMAND: &'h str = "PlanePair";
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("normal_vec")
@@ -1938,8 +1926,6 @@ pub struct SimpleBox<T, const N: usize> {
 macro_rules! impl_clap_simplebox {
     ($ty : ident, $n : expr) => {
         impl<'h> CommandBuilder<'h, 1> for SimpleBox<$ty, $n> {
-            const SUBCOMMAND: &'h str = "SimpleBox";
-
             fn args() -> [Arg<'h>; 1] {
                 [Arg::new("pairs")
                     .short('p')
@@ -2412,8 +2398,6 @@ impl<V: Vector> Cube<V> {
 macro_rules! impl_clap_cube {
     (fixed, $ty : ident) => {
         impl<'h, const N : usize> CommandBuilder<'h, 2> for Cube<Cartessian<$ty, N>> {
-            const SUBCOMMAND: &'h str = "Cube";
-
             fn args() -> [Arg<'h>; 2] {
                 [Arg::new("center")
                     .short('c')
@@ -2441,8 +2425,6 @@ macro_rules! impl_clap_cube {
     };
     (nd, $ty : ident) => {
         impl<'h> CommandBuilder<'h, 2> for Cube<CartessianND<$ty>> {
-            const SUBCOMMAND: &'h str = "Cube";
-
             fn args() -> [Arg<'h>; 2] {
                 [Arg::new("center")
                     .short('c')

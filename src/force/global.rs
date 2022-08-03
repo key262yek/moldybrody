@@ -78,8 +78,6 @@ impl<'h, V> CommandBuilder<'h, 1> for ConstGravity<V>
 where
     V: Vector,
 {
-    const SUBCOMMAND: &'h str = "ConstGravity";
-
     fn args() -> [Arg<'h>; 1] {
         [Arg::new("acc")
             .short('g')
@@ -182,8 +180,6 @@ impl<'h, V> CommandBuilder<'h, 1> for Lorentz<V>
 where
     V: Vector + Dim<3>,
 {
-    const SUBCOMMAND: &'h str = "Lorentz";
-
     fn args() -> [Arg<'h>; 1] {
         [Arg::new("mag_field")
             .short('B')

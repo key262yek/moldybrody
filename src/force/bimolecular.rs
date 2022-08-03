@@ -79,8 +79,6 @@ where
 macro_rules! impl_gravity_clap {
     ($ty : ident) => {
         impl<'h> CommandBuilder<'h, 1> for Gravity<$ty> {
-            const SUBCOMMAND: &'h str = "Gravity";
-
             fn args() -> [Arg<'h>; 1] {
                 [Arg::new("const_g")
                     .short('G')

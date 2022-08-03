@@ -161,29 +161,6 @@ macro_rules! impl_const_step {
         }
 
         impl<'h> CommandBuilder<'h, 2> for ConstStep<$ty> {
-            const SUBCOMMAND: &'h str = "ConstStep";
-
-            // fn command() -> Command<'h> {
-            //     Command::new(Self::SUBCOMMAND)
-            //         .arg(
-            //             Arg::new("step_size")
-            //                 .short('t')
-            //                 .long("dt")
-            //                 .value_name("STEPSIZE")
-            //                 .takes_value(true)
-            //                 .help("Time step of iterator"),
-            //         )
-            //         .arg(
-            //             Arg::new("max_time")
-            //                 .short('m')
-            //                 .long("tmax")
-            //                 .value_name("TMAX")
-            //                 .default_value("0.0")
-            //                 .help("Maximum time to iterate."),
-            //         )
-            //         .after_help("Constant Step Time Iterator")
-            // }
-
             fn args() -> [Arg<'h>; 2] {
                 [
                     Arg::new("step_size")
@@ -373,45 +350,6 @@ macro_rules! impl_exp_step {
         }
 
         impl<'h> CommandBuilder<'h, 4> for ExponentialStep<$ty> {
-            const SUBCOMMAND: &'h str = "ExponentialStep";
-
-            // fn command() -> Command<'h> {
-            //     Command::new(Self::SUBCOMMAND)
-            //         .arg(
-            //             Arg::new("min_step_size")
-            //                 .short('t')
-            //                 .long("dt_min")
-            //                 .value_name("MINSTEPSIZE")
-            //                 .takes_value(true)
-            //                 .help("Minimal time step of iterator"),
-            //         )
-            //         .arg(
-            //             Arg::new("max_step_size")
-            //                 .short('T')
-            //                 .long("dt_max")
-            //                 .value_name("MAXSTEPSIZE")
-            //                 .takes_value(true)
-            //                 .help("Maximal time step of iterator"),
-            //         )
-            //         .arg(
-            //             Arg::new("length")
-            //                 .short('l')
-            //                 .long("len")
-            //                 .value_name("LENGTH")
-            //                 .default_value("10")
-            //                 .help("Period to increase time step"),
-            //         )
-            //         .arg(
-            //             Arg::new("max_time")
-            //                 .short('m')
-            //                 .long("tmax")
-            //                 .value_name("TMAX")
-            //                 .default_value("0.0")
-            //                 .help("Maximum time to iterate. Default value 0.0 means MAX"),
-            //         )
-            //         .after_help("Time iterator with exponentially increasing step size")
-            // }
-
             fn args() -> [Arg<'h>; 4] {
                 [
                     Arg::new("min_step_size")

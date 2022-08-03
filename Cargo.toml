@@ -51,7 +51,4 @@ parallel = []
 criterion = "0.3.4"
 
 
-[[bench]]
-name = "par_iter_3"
-harness = false
 
