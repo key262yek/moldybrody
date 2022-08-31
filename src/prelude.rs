@@ -4,7 +4,7 @@ pub use moldybrody_proc::State;
 pub use crate::{
     approx::{
         time::{ConstStep, ExponentialStep},
-        ApproxNewton, TimeIterator,
+        TimeIterator,
     },
     boundary::{
         plane::{
