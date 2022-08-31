@@ -29,33 +29,7 @@ where
     fn const_speed(&'a self, dt: T) -> (P, P);
 }
 
-// pub trait ApproxNewtonList<'a, S, P, T>:
 
-// where
-//     S: 'a + State<Movement = (P, P), Position = P> + ApproxNewton<'a, P, T>,
-//     P: Vector<Item = T>,
-//     T: Scalar,
-// {
-//     fn euler<F, M, G, B>(
-//         &'a mut self,
-//         forces: &'a F,
-//         movements: &'a mut M,
-//         dt: T,
-//         global: Option<G>,
-//         bimole: Option<B>,
-//     ) where
-//         F: Index<usize, Output = P>,
-//         M: IndexMut<usize, Output = (P, P)>,
-//         G: Global<'a, S, Force = P, Potential = T>,
-//         B: Bimolecular<'a, S, Force = P, Potential = T>;
-
-//     fn const_speed(&'a mut self, dt: T) {
-//         for state in self.into_iter() {
-//             let movement = state.const_speed(dt);
-//             state.renew_state(&movement);
-//         }
-//     }
-// }
 
 pub trait ApproxOverdampedLangevin<'a, P, T>: State<Movement = P, Position = P>
 where
