@@ -167,13 +167,13 @@ macro_rules! impl_const_step {
                         .long("dt")
                         .value_name("STEPSIZE")
                         .takes_value(true)
-                        .value_parser(clap::value_parser!(f64))
+                        .value_parser(clap::value_parser!($ty))
                         .help("Time step of iterator"),
                     Arg::new("max_time")
                         .long("tmax")
                         .value_name("TMAX")
                         .default_value("0.0")
-                        .value_parser(clap::value_parser!(f64))
+                        .value_parser(clap::value_parser!($ty))
                         .help("Maximum time to iterate."),
                 ]
             }
