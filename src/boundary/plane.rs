@@ -4490,7 +4490,7 @@ mod test {
         // Cube
         let center = Cartessian2D::new([0.0, 0.0]);
         let radius = 1.0;
-        let cube: Cube<Cartessian2D<f64>> = Cube::new(&center, radius);
+        let cube: Cube<Cartessian2D<f64>> = Cube::new(center, radius);
         let expected = r#"{"center":{"coord":[0.0,0.0]},"radius":1.0}"#;
         assert_eq!(expected, to_string(&cube).unwrap());
 
