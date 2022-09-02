@@ -334,7 +334,7 @@ macro_rules! impl_generic_runge_kutta{
                     },
                     3 => {
                         if alpha.abs_diff_eq(&0., 1e-5) || alpha.abs_diff_eq(&(2. / 3.), 1e-5) || alpha.abs_diff_eq(&1., 1e-5){
-                            return panic!("Generic 3rd order Runge-Kutta method cannot be made with alpha = 0, 2/3, 1")
+                            panic!("Generic 3rd order Runge-Kutta method cannot be made with alpha = 0, 2/3, 1")
                         }
                         let t = (1. - alpha) / (3. * alpha - 2.);
                         ButcherTableau{
