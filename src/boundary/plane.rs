@@ -1558,7 +1558,8 @@ macro_rules! impl_planepair_clap {
             fn from(m: &ArgMatches) -> Self {
                 let normal: Cartessian<$ty, N> =
                     m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
-                let constant: [$ty; 2] = from_str(m.get_one::<String>("constant").unwrap()).unwrap();
+                let constant: [$ty; 2] =
+                    from_str(m.get_one::<String>("constant").unwrap()).unwrap();
                 PlanePair::<Cartessian<$ty, N>>::new(normal, constant).unwrap()
             }
         }
@@ -1587,7 +1588,8 @@ macro_rules! impl_planepair_clap {
             fn from(m: &ArgMatches) -> Self {
                 let normal: CartessianND<$ty> =
                     m.get_one::<String>("normal_vec").unwrap().parse().unwrap();
-                let constant: [$ty; 2] = from_str(m.get_one::<String>("constant").unwrap()).unwrap();
+                let constant: [$ty; 2] =
+                    from_str(m.get_one::<String>("constant").unwrap()).unwrap();
                 PlanePair::<CartessianND<$ty>>::new(normal, constant).unwrap()
             }
         }
@@ -1932,13 +1934,14 @@ macro_rules! impl_clap_simplebox {
                     .long("pairs")
                     .value_name("PAIRS")
                     .takes_value(true)
-                    .help("Constant pairs. format : [[1.0, 2.0], [3.0, 4.0]]"),]
+                    .help("Constant pairs. format : [[1.0, 2.0], [3.0, 4.0]]")]
             }
         }
 
         impl From<&ArgMatches> for SimpleBox<$ty, $n> {
             fn from(m: &ArgMatches) -> Self {
-                let pairs: [[$ty; 2]; $n] = from_str(m.get_one::<String>("pairs").unwrap()).unwrap();
+                let pairs: [[$ty; 2]; $n] =
+                    from_str(m.get_one::<String>("pairs").unwrap()).unwrap();
                 SimpleBox::<$ty, $n>::from_pairs(pairs)
             }
         }
@@ -1964,7 +1967,6 @@ impl_clap_simplebox!(i16);
 impl_clap_simplebox!(i32);
 impl_clap_simplebox!(i64);
 impl_clap_simplebox!(isize);
-
 
 impl<T, const N: usize> SimpleBox<T, N> {
     pub fn new(planes: [SimplePlanePair<T>; N]) -> Result<Self, Error>
@@ -2397,27 +2399,30 @@ impl<V: Vector> Cube<V> {
 
 macro_rules! impl_clap_cube {
     (fixed, $ty : ident) => {
-        impl<'h, const N : usize> CommandBuilder<'h, 2> for Cube<Cartessian<$ty, N>> {
+        impl<'h, const N: usize> CommandBuilder<'h, 2> for Cube<Cartessian<$ty, N>> {
             fn args() -> [Arg<'h>; 2] {
-                [Arg::new("center")
-                    .short('c')
-                    .long("center")
-                    .value_name("CENTER")
-                    .takes_value(true)
-                    .help("Center of cube. format : 0,2,3"),
-                 Arg::new("radius")
-                    .short('r')
-                    .long("radius")
-                    .value_name("RADIUS")
-                    .takes_value(true)
-                    .value_parser(clap::value_parser!($ty))
-                    .help("Radius of cube"),]
+                [
+                    Arg::new("center")
+                        .short('c')
+                        .long("center")
+                        .value_name("CENTER")
+                        .takes_value(true)
+                        .help("Center of cube. format : 0,2,3"),
+                    Arg::new("radius")
+                        .short('r')
+                        .long("radius")
+                        .value_name("RADIUS")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!($ty))
+                        .help("Radius of cube"),
+                ]
             }
         }
 
-        impl<const N : usize> From<&ArgMatches> for Cube<Cartessian<$ty, N>> {
+        impl<const N: usize> From<&ArgMatches> for Cube<Cartessian<$ty, N>> {
             fn from(m: &ArgMatches) -> Self {
-                let center : Cartessian<$ty, N> = m.get_one::<String>("center").unwrap().parse().unwrap();
+                let center: Cartessian<$ty, N> =
+                    m.get_one::<String>("center").unwrap().parse().unwrap();
                 let radius: $ty = *m.get_one::<$ty>("radius").unwrap();
                 Cube::<Cartessian<$ty, N>>::new(center, radius)
             }
@@ -2426,25 +2431,28 @@ macro_rules! impl_clap_cube {
     (nd, $ty : ident) => {
         impl<'h> CommandBuilder<'h, 2> for Cube<CartessianND<$ty>> {
             fn args() -> [Arg<'h>; 2] {
-                [Arg::new("center")
-                    .short('c')
-                    .long("center")
-                    .value_name("CENTER")
-                    .takes_value(true)
-                    .help("Center of cube. format : 0,2,3"),
-                 Arg::new("radius")
-                    .short('r')
-                    .long("radius")
-                    .value_name("RADIUS")
-                    .takes_value(true)
-                    .value_parser(clap::value_parser!($ty))
-                    .help("Radius of cube"),]
+                [
+                    Arg::new("center")
+                        .short('c')
+                        .long("center")
+                        .value_name("CENTER")
+                        .takes_value(true)
+                        .help("Center of cube. format : 0,2,3"),
+                    Arg::new("radius")
+                        .short('r')
+                        .long("radius")
+                        .value_name("RADIUS")
+                        .takes_value(true)
+                        .value_parser(clap::value_parser!($ty))
+                        .help("Radius of cube"),
+                ]
             }
         }
 
         impl From<&ArgMatches> for Cube<CartessianND<$ty>> {
             fn from(m: &ArgMatches) -> Self {
-                let center : CartessianND<$ty> = m.get_one::<String>("center").unwrap().parse().unwrap();
+                let center: CartessianND<$ty> =
+                    m.get_one::<String>("center").unwrap().parse().unwrap();
                 let radius: $ty = *m.get_one::<$ty>("radius").unwrap();
                 Cube::<CartessianND<$ty>>::new(center, radius)
             }
@@ -2453,7 +2461,7 @@ macro_rules! impl_clap_cube {
     ($ty : ident) => {
         impl_clap_cube!(fixed, $ty);
         impl_clap_cube!(nd, $ty);
-    }
+    };
 }
 
 impl_clap_cube!(f32);
@@ -2463,8 +2471,6 @@ impl_clap_cube!(i16);
 impl_clap_cube!(i32);
 impl_clap_cube!(i64);
 impl_clap_cube!(isize);
-
-
 
 macro_rules! impl_float_cube {
     ($ty : ident) => {
@@ -4490,7 +4496,7 @@ mod test {
         // Cube
         let center = Cartessian2D::new([0.0, 0.0]);
         let radius = 1.0;
-        let cube: Cube<Cartessian2D<f64>> = Cube::new(&center, radius);
+        let cube: Cube<Cartessian2D<f64>> = Cube::new(center, radius);
         let expected = r#"{"center":{"coord":[0.0,0.0]},"radius":1.0}"#;
         assert_eq!(expected, to_string(&cube).unwrap());
 

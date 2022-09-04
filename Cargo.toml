@@ -2,7 +2,7 @@
 name = "moldybrody"
 version = "0.1.0"
 authors = ["Myeongseon Choi <joyms514@kaist.ac.kr>"]
-edition = "2018"
+edition = "2021"
 readme="README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/key262yek/moldybrody"
@@ -20,7 +20,7 @@ rand_pcg = "0.3.1"
 rand_distr = "0.4.1"
 doc-comment = "0.3.3"
 itertools = "0.10.3"
-ndarray = "0.15.2"
+ndarray = {version = "0.15.6", features = ["approx-0_5"]}
 num-traits = "0.2.0"
 num-complex = "0.4.0"
 approx = {version = "0.5.0", features = ["num-complex"]}
