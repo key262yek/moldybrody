@@ -12,60 +12,6 @@ use crate::state::State;
 use crate::vector::Scalar;
 use crate::vector::Vector;
 // use std::ops::{Index, IndexMut};
-use tableau::ApproxMethod;
-use crate::boundary::System;
-use crate::force::{Global, Bimolecular};
-
-
-/// Approximation method
-///
-/// System에 따라 정해지는 State와 Force, Time Iterator를 인자로 해서 State를 renewal하는 approximation method를 지칭합니다.
-/// 같은 시스템에서도 approximation order에 따라 그 형태가 달라질 수 있습니다.
-pub struct NewtonRKIntegratorBuilder<'a, V, S, T>
-    where V : Vector,
-        S : State<Position = V, Movement = (V, V)>,
-        T : TimeIterator<<V as Vector>::Item>{
-    method : Option<Box<dyn ApproxMethod<<V as Vector>::Item>>>,
-    time_iter : Option<Box<T>>,
-    states : Option<Box<Vec<S>>>,
-    global_force : Option<Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>>,
-    bimolecular_force : Option<Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>>,
-    boundary_cond : Option<System<S, V>>
-}
-impl<'a, V, S, T> NewtonRKIntegratorBuilder<'a, V, S, T>
-    where V : Vector,
-    S : State<Position = V, Movement = (V, V)>,
-    T : TimeIterator<<V as Vector>::Item>{
-    pub fn new() -> Self{
-        Self{
-            method : None,
-            time_iter : None,
-            states : None,
-            global_force : None,
-            bimolecular_force : None,
-            boundary_cond : None
-        } 
-    }
-
-    pub fn method(mut self, m : Box<dyn ApproxMethod<<V as Vector>::Item>>) -> Self{
-        self.method = Some(m);
-        self
-    }
-
-
-    pub fn build() -> NewtonRKIntegrator{
-        unimplemented!();
-    }
-}
-
-pub struct NewtonRKIntegrator(Box<dyn NewtonRKIntegratorTrait>);
-
-trait NewtonRKIntegratorTrait{
-    fn iterate(&self){
-        unimplemented!();
-    }
-}
-
 
 pub trait ApproxOverdampedLangevin<'a, P, T>: State<Movement = P, Position = P>
 where
@@ -85,8 +31,10 @@ where
 /// 초반의 time step은 지수함수적으로 증가하는 경우도 있을 수 있습니다.
 /// 또 입자들이 Run and Tumble하는 경우에는, 다음 tumble까지 직진운동할 것이기 때문에 직진운동 사이에서는 시간을 크게 뛸 수 있습니다.
 /// 이런 여러 성격의 iterator를 모두 어우르기 위해 trait으로 선언했습니다.
-pub trait TimeIterator<T> 
-    where Self : Iterator<Item = T> + Sized{
+pub trait TimeIterator<T>
+where
+    Self: Iterator<Item = T> + Sized,
+{
     /// Return a current time restore in timeiterator
     ///
     /// Iterator에 저장되어 있는 현재 시간을 출력하는 함수입니다.
@@ -180,8 +128,8 @@ pub trait TimeIterator<T>
 /// }
 /// ```
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub struct TimeDiffIterator<T>{
-    pub timeiter: Box<T>,
+pub struct TimeDiffIterator<T> {
+    pub timeiter: T,
 }
 
 impl<T, Ti: Iterator<Item = T> + TimeIterator<T>> Iterator for TimeDiffIterator<Ti> {
@@ -195,9 +143,9 @@ impl<T, Ti: Iterator<Item = T> + TimeIterator<T>> Iterator for TimeDiffIterator<
     }
 }
 
+pub mod integrator;
 pub mod langevin;
 pub mod newton;
-pub mod time;
 pub mod tableau;
+pub mod time;
 // pub mod brownian_dynamics;
-
