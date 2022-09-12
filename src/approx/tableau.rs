@@ -10,6 +10,12 @@ pub struct ButcherTableau<T> {
     ci: Vec<T>,
 }
 
+impl<T> ButcherTableau<T> {
+    pub fn len(&self) -> usize {
+        self.bj.len()
+    }
+}
+
 impl<T> AbsDiffEq for ButcherTableau<T>
 where
     T: AbsDiffEq,
