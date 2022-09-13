@@ -2,6 +2,7 @@ use crate::argument::CommandBuilder;
 use approx::AbsDiffEq;
 use clap::Arg;
 use clap::ArgMatches;
+use std::fmt::Debug;
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
 pub struct ButcherTableau<T> {
@@ -57,15 +58,17 @@ where
     }
 }
 
-pub trait ApproxMethod<T> {
+pub trait ApproxMethod<T> : Debug {
     fn tableau(&self) -> &ButcherTableau<T>;
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonEulerMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonEulerMethod<T> {
+impl<T> ApproxMethod<T> for NewtonEulerMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -102,11 +105,13 @@ macro_rules! impl_euler {
 impl_euler!(f32);
 impl_euler!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonMidPointMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonMidPointMethod<T> {
+impl<T> ApproxMethod<T> for NewtonMidPointMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -143,11 +148,13 @@ macro_rules! impl_midpoint {
 impl_midpoint!(f32);
 impl_midpoint!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonSSPRK3Method<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonSSPRK3Method<T> {
+impl<T> ApproxMethod<T> for NewtonSSPRK3Method<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -185,11 +192,13 @@ macro_rules! impl_ssprk3 {
 impl_ssprk3!(f32);
 impl_ssprk3!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonClassicMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonClassicMethod<T> {
+impl<T> ApproxMethod<T> for NewtonClassicMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -232,11 +241,13 @@ macro_rules! impl_classic {
 impl_classic!(f32);
 impl_classic!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonHeunMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonHeunMethod<T> {
+impl<T> ApproxMethod<T> for NewtonHeunMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -291,11 +302,13 @@ macro_rules! impl_heun {
 impl_heun!(f32);
 impl_heun!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonRalstonMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonRalstonMethod<T> {
+impl<T> ApproxMethod<T> for NewtonRalstonMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -352,11 +365,13 @@ macro_rules! impl_raltson {
 impl_raltson!(f32);
 impl_raltson!(f64);
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct NewtonGenericRungeKuttaMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonGenericRungeKuttaMethod<T> {
+impl<T> ApproxMethod<T> for NewtonGenericRungeKuttaMethod<T> 
+    where T : Debug{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }

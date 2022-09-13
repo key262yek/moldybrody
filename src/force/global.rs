@@ -21,6 +21,7 @@ use std::ops::IndexMut;
 use std::ops::Mul;
 use std::ops::Neg;
 
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConstGravity<V: Vector> {
     pub acc: V,
@@ -45,7 +46,7 @@ impl<V: Vector> ConstGravity<V> {
 impl<'a, S, V, T> Global<'a, S> for ConstGravity<V>
 where
     S: State<Position = V> + Mass<T>,
-    V: Vector<Item = T> + Dot<&'a V, Output = T> + 'a,
+    V: Vector<Item = T> + Dot<&'a V, Output = T> + 'a + Debug,
     &'a V: Mul<T, Output = V> + IntoIterator<Item = &'a T>,
     &'a mut V: IntoIterator<Item = &'a mut T>,
     T: Scalar + Neg<Output = T>,
@@ -129,7 +130,7 @@ where
         + Index<usize, Output = T>
         + IndexMut<usize>
         + Div<T, Output = V>
-        + 'a,
+        + 'a + Debug,
     T: Scalar + Mul<V, Output = V> + Neg<Output = T>,
 {
     type Force = V;
@@ -201,9 +202,18 @@ where
     }
 }
 
+
 struct GeneralGlobal<S: State, F: Vector, P> {
     potential: fn(&S) -> P,
     force: fn(&S) -> F,
+}
+
+impl<S, F, P> Debug for GeneralGlobal<S, F, P>
+    where S : State,
+    F : Vector,{
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> std::fmt::Result{
+        write!(f, "General Global interaction")
+    }
 }
 
 impl<S, F, P> GeneralGlobal<S, F, P>
@@ -383,7 +393,7 @@ mod test {
 
     #[test]
     fn general_global_interaction() {
-        #[derive(State)]
+        #[derive(State, Debug)]
         struct TestState {
             mass: f64,
             pos: Cartessian2D<f64>,

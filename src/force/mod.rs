@@ -11,9 +11,10 @@
 use crate::state::State;
 use crate::vector::Vector;
 use rand_pcg::Pcg64;
+use std::fmt::Debug;
 
 /// Global potential, Single particle interaction
-pub trait Global<'a, S: State> {
+pub trait Global<'a, S: State> : Debug{
     type Force: Vector;
     type Potential;
 
@@ -30,7 +31,7 @@ pub trait Global<'a, S: State> {
 }
 
 /// Trait indicates bimolecular interaction
-pub trait Bimolecular<'a, S: State> {
+pub trait Bimolecular<'a, S: State> : Debug {
     type Force: Vector;
     type Potential;
 
@@ -47,7 +48,7 @@ pub trait Bimolecular<'a, S: State> {
 }
 
 /// Trait indicates random force
-pub trait RandomForce<'a, S: State> {
+pub trait RandomForce<'a, S: State> : Debug{
     type Force: Vector;
 
     fn force(&self, rng: &mut Pcg64) -> Self::Force;

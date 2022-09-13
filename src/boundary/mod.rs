@@ -69,7 +69,7 @@ pub enum AfterMove {
     Dead,
 }
 
-pub trait BoundaryCondition<S, V>
+pub trait BoundaryCondition<S, V> : Debug
 where
     S: State<Position = V, Movement = (V, V)>,
     V: Vector,
@@ -85,6 +85,7 @@ where
     fn check_bc_overdamped<'a>(&self, state: &'a S, movement: &'a mut V) -> AfterMove;
 }
 
+#[derive(Debug)]
 pub struct System<S, V>
 where
     S: State<Position = V, Movement = (V, V)>,
