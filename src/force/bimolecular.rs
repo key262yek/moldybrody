@@ -59,7 +59,7 @@ where
         return res;
     }
 
-    fn force_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force) {
+    fn force_to(&self, state: &'a S, other: &'a S, force: &mut Self::Force) {
         force.clone_from(other.pos());
         force.zip_mut_with(state.pos(), |x, y| *x = *x - *y);
         let r = force.norm_l2();
@@ -67,7 +67,7 @@ where
         force.map_inplace(|x| *x = c * *x);
     }
 
-    fn force_add_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force) {
+    fn force_add_to(&self, state: &'a S, other: &'a S, force: &mut Self::Force) {
         let mut dist = other.pos() - state.pos();
         let r = dist.norm_l2();
         let c = self.const_g * state.mass() * other.mass() / (r * r * r);

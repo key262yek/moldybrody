@@ -6,6 +6,7 @@ use crate::force::{Bimolecular, Global, RandomForce};
 use crate::state::State;
 use crate::vector::Scalar;
 use crate::vector::Vector;
+use crate::vector::basic::Map;
 use num_traits::Zero;
 use std::ops::Mul;
 use std::fmt::Debug;
@@ -96,7 +97,7 @@ where
 
     pub fn build(self) -> RKIntegrator<'static, V, S, T> 
     where 
-        V: std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug + 'static,
+        V: std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug + Map<Item = <V as Vector>::Item> + 'static,
         S: std::clone::Clone + Debug + 'static,
         Vec<S>: Clone,
         T: Clone + Debug + 'static,
@@ -127,13 +128,13 @@ where
 }
 
 trait RKIntegratorTrait<'a, V, S, T> : Debug{
-    fn iterate(&mut self) {
+    fn iterate(&'a mut self) {
         unimplemented!();
     }
 
-    fn compute_force(&mut self);
+    fn compute_force(&'a mut self);
 
-    fn states(&self) -> &Vec<S>;
+    fn states(&'a mut self) -> &'a mut Vec<S>;
 
     fn from_builder(builder: RKIntegratorBuilder<'a, V, S, T>) -> Self
     where
@@ -154,7 +155,7 @@ where
     T: TimeIterator<<V as Vector>::Item>,
     <V as Vector>::Item: Scalar,
 {
-    pub fn iterate(&mut self) {
+    pub fn iterate(&'a mut self) {
         self.0.iterate()
     }
 
@@ -370,243 +371,256 @@ where
     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
     <V as Vector>::Item: Scalar,
 {
-    fn compute_force(&mut self) {
-        unimplemented!();
+    fn compute_force(&'a mut self) {
+        for (state, force) in self.states.iter().zip(self.temp_force.iter_mut()){
+            self.global_force.force_to(state, force);
+        }
     }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
+    fn states(&mut self) -> &mut Vec<S>{
+        &mut self.states
     }
 
     impl_from_builder!("Newton", "Global", "code");
 }
 
-#[derive(Debug)]
-pub struct NewtonBimoleculeIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    boundary_cond: System<S, V>,
-}
+// #[derive(Debug)]
+// pub struct NewtonBimoleculeIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     boundary_cond: System<S, V>,
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for NewtonBimoleculeIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for NewtonBimoleculeIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug + Map<Item = <V as Vector>::Item>,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&'a mut self) {
+//         let zero = <<V as Vector>::Item as Zero>::zero();
+//         for force in self.temp_force.iter_mut(){
+//             force.map_inplace(|x| *x *= zero);
+//         }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+//         let length = self.states.len();
+//         for i in 0..length{
+//             for j in i + 1..length{
+//                 self.bimolecular_force.force_add_to(&self.states[i], &self.states[j], &mut self.temp_force[i]);
+//                 self.bimolecular_force.force_add_to(&self.states[j], &self.states[i], &mut self.temp_force[j]);
+//             }
+//         }
+//     }
 
-    impl_from_builder!("Newton", "Bimolecule", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
 
-#[derive(Debug)]
-pub struct NewtonBothIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    boundary_cond: System<S, V>,
-}
+//     impl_from_builder!("Newton", "Bimolecule", "code");
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for NewtonBothIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// #[derive(Debug)]
+// pub struct NewtonBothIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     boundary_cond: System<S, V>,
+// }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for NewtonBothIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&mut self) {
+//         unimplemented!();
+//     }
 
-    impl_from_builder!("Newton", "Both", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
 
-#[derive(Debug)]
-pub struct LangevinIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    random_force: Box<dyn RandomForce<'a, S, Force = V>>,
-    boundary_cond: System<S, V>,
-}
+//     impl_from_builder!("Newton", "Both", "code");
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// #[derive(Debug)]
+// pub struct LangevinIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     random_force: Box<dyn RandomForce<'a, S, Force = V>>,
+//     boundary_cond: System<S, V>,
+// }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&mut self) {
+//         unimplemented!();
+//     }
 
-    impl_from_builder!("Langevin", "", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
 
-#[derive(Debug)]
-pub struct LangevinGlobalIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    random_force: Box<dyn RandomForce<'a, S, Force = V>>,
-    boundary_cond: System<S, V>,
-}
+//     impl_from_builder!("Langevin", "", "code");
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinGlobalIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// #[derive(Debug)]
+// pub struct LangevinGlobalIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     random_force: Box<dyn RandomForce<'a, S, Force = V>>,
+//     boundary_cond: System<S, V>,
+// }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinGlobalIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&mut self) {
+//         unimplemented!();
+//     }
 
-    impl_from_builder!("Langevin", "Global", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
 
-#[derive(Debug)]
-pub struct LangevinBimoleculeIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    random_force: Box<dyn RandomForce<'a, S, Force = V>>,
-    boundary_cond: System<S, V>,
-}
+//     impl_from_builder!("Langevin", "Global", "code");
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinBimoleculeIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// #[derive(Debug)]
+// pub struct LangevinBimoleculeIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     random_force: Box<dyn RandomForce<'a, S, Force = V>>,
+//     boundary_cond: System<S, V>,
+// }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinBimoleculeIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&mut self) {
+//         unimplemented!();
+//     }
 
-    impl_from_builder!("Langevin", "Bimolecule", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
 
-#[derive(Debug)]
-pub struct LangevinBothIntegrator<'a, V, S, T>
-where
-    V: Vector,
-    S: State<Position = V, Movement = (V, V)>,
-    T: TimeIterator<<V as Vector>::Item>,
-    <V as Vector>::Item: Scalar,
-{
-    tableau: ButcherTableau<<V as Vector>::Item>,
-    time_iter: T,
-    pub states: Vec<S>,
-    memory: Vec<Vec<(V, V)>>,
-    temp_force: Vec<V>,
-    temp_state: Vec<S>,
-    global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
-    random_force: Box<dyn RandomForce<'a, S, Force = V>>,
-    boundary_cond: System<S, V>,
-}
+//     impl_from_builder!("Langevin", "Bimolecule", "code");
+// }
 
-impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinBothIntegrator<'a, V, S, T>
-where
-    V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
-    S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
-    Vec<S>: Clone,
-    T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
-    <V as Vector>::Item: Scalar,
-{
-    fn compute_force(&mut self) {
-        unimplemented!();
-    }
+// #[derive(Debug)]
+// pub struct LangevinBothIntegrator<'a, V, S, T>
+// where
+//     V: Vector,
+//     S: State<Position = V, Movement = (V, V)>,
+//     T: TimeIterator<<V as Vector>::Item>,
+//     <V as Vector>::Item: Scalar,
+// {
+//     tableau: ButcherTableau<<V as Vector>::Item>,
+//     time_iter: T,
+//     pub states: Vec<S>,
+//     memory: Vec<Vec<(V, V)>>,
+//     temp_force: Vec<V>,
+//     temp_state: Vec<S>,
+//     global_force: Box<dyn Global<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     bimolecular_force: Box<dyn Bimolecular<'a, S, Force = V, Potential = <V as Vector>::Item>>,
+//     random_force: Box<dyn RandomForce<'a, S, Force = V>>,
+//     boundary_cond: System<S, V>,
+// }
 
-    fn states(&self) -> &Vec<S>{
-        &self.states
-    }
+// impl<'a, V, S, T> RKIntegratorTrait<'a, V, S, T> for LangevinBothIntegrator<'a, V, S, T>
+// where
+//     V: Vector + std::clone::Clone + Mul<<V as Vector>::Item, Output = V> + Debug,
+//     S: State<Position = V, Movement = (V, V)> + std::clone::Clone + Debug,
+//     Vec<S>: Clone,
+//     T: TimeIterator<<V as Vector>::Item> + Clone + Debug,
+//     <V as Vector>::Item: Scalar,
+// {
+//     fn compute_force(&mut self) {
+//         unimplemented!();
+//     }
 
-    impl_from_builder!("Langevin", "Both", "code");
-}
+//     fn states(&mut self) -> &mut Vec<S>{
+//         &mut self.states
+//     }
+
+//     impl_from_builder!("Langevin", "Both", "code");
+// }
 
 #[cfg(test)]
 mod test{

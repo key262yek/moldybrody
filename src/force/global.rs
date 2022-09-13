@@ -146,7 +146,7 @@ where
         -state.charge() * self.mag_field.cross(&state.vel())
     }
 
-    fn force_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
+    fn force_to(& self, state: &'a S, force: &mut Self::Force) {
         if self.mag_field.dim() != state.vel().dim() {
             panic!("Cross product between different length of vector is not available.");
         } else if self.mag_field.dim() != 3 {
@@ -161,7 +161,7 @@ where
         }
     }
 
-    fn force_add_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
+    fn force_add_to(& self, state: &'a S, force: &mut Self::Force) {
         if self.mag_field.dim() != state.vel().dim() {
             panic!("Cross product between different length of vector is not available.");
         } else if self.mag_field.dim() != 3 {
@@ -235,19 +235,19 @@ where
     type Force = F;
     type Potential = P;
 
-    fn potential(&'a self, state: &'a S) -> Self::Potential {
+    fn potential(&self, state: &'a S) -> Self::Potential {
         (self.potential)(state)
     }
 
-    fn force(&'a self, state: &'a S) -> Self::Force {
+    fn force(&self, state: &'a S) -> Self::Force {
         (self.force)(state)
     }
 
-    fn force_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
+    fn force_to(&self, state: &'a S, force: &mut Self::Force) {
         *force = (self.force)(state).clone();
     }
 
-    fn force_add_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
+    fn force_add_to(&self, state: &'a S, force: &mut Self::Force) {
         *force += (self.force)(state);
     }
 }

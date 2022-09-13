@@ -36,15 +36,15 @@ pub trait Bimolecular<'a, S: State> : Debug {
     type Potential;
 
     /// return value of potential at certain state
-    fn potential(&self, state: &'a S, other: &'a S) -> Self::Potential;
+    fn potential(&'a self, state: &'a S, other: &'a S) -> Self::Potential;
 
-    fn force(&self, state: &'a S, other: &'a S) -> Self::Force;
+    fn force(&'a self, state: &'a S, other: &'a S) -> Self::Force;
 
     /// change value of force to force vector of given state
-    fn force_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
+    fn force_to(&'a self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
 
     /// Add force to given vector
-    fn force_add_to(&self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
+    fn force_add_to(&'a self, state: &'a S, other: &'a S, force: &'a mut Self::Force);
 }
 
 /// Trait indicates random force
