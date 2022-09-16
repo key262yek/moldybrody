@@ -143,7 +143,7 @@ impl<T, Ti: Iterator<Item = T> + TimeIterator<T>> Iterator for TimeDiffIterator<
     }
 }
 
-// pub mod integrator;
+pub mod integrator;
 pub mod langevin;
 pub mod newton;
 pub mod tableau;
