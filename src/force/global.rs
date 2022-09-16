@@ -20,6 +20,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Mul;
 use std::ops::Neg;
+use crate::vector::basic::Map;
 
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -46,31 +47,35 @@ impl<V: Vector> ConstGravity<V> {
 impl<'a, S, V, T> Global<'a, S> for ConstGravity<V>
 where
     S: State<Position = V> + Mass<T>,
-    V: Vector<Item = T> + Dot<&'a V, Output = T> + 'a + Debug,
-    &'a V: Mul<T, Output = V> + IntoIterator<Item = &'a T>,
+    V: Vector<Item = T> + Dot<&'a V, Output = T> + Mul<T, Output = V> + Map<Item = T> + Index<usize, Output = T> + Clone + 'a + Debug,
     &'a mut V: IntoIterator<Item = &'a mut T>,
     T: Scalar + Neg<Output = T>,
 {
     type Force = V;
     type Potential = T;
 
-    fn potential(&'a self, state: &'a S) -> Self::Potential {
+    fn potential(&self, state: &'a S) -> Self::Potential {
         -state.mass() * self.acc.dot(state.pos())
     }
 
-    fn force(&'a self, state: &'a S) -> Self::Force {
-        &self.acc * state.mass()
+    fn force(&self, state: &'a S) -> Self::Force {
+        let mut res = self.acc.clone();
+        let m = state.mass();
+        res.map_inplace(|x| *x *= m);
+        res
     }
 
-    fn force_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
-        for (f, s) in force.into_iter().zip(self.acc.into_iter()) {
-            *f = state.mass() * *s;
+    fn force_to(&self, state: &'a S, force: &'a mut Self::Force) {
+        let m = state.mass();
+        for (i, f) in force.into_iter().enumerate(){
+            *f = m * self.acc[i];
         }
     }
 
-    fn force_add_to(&'a self, state: &'a S, force: &'a mut Self::Force) {
-        for (f, s) in force.into_iter().zip(self.acc.into_iter()) {
-            *f += state.mass() * *s;
+    fn force_add_to(&self, state: &'a S, force: &'a mut Self::Force) {
+        let m = state.mass();
+        for (i, f) in force.into_iter().enumerate(){
+            *f += m * self.acc[i];
         }
     }
 }
