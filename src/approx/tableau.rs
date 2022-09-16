@@ -6,16 +6,30 @@ use std::fmt::Debug;
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
 pub struct ButcherTableau<T> {
-    aij: Vec<Vec<T>>,
-    bj: Vec<T>,
-    ci: Vec<T>,
+    pub(crate) aij: Vec<Vec<T>>,
+    pub(crate) bj: Vec<T>,
+    pub(crate) ci: Vec<T>,
+}
+
+#[derive(PartialEq, PartialOrd, Clone, Debug)]
+pub struct TableauIterator<'a, T> {
+    pub(crate) tableau : &'a ButcherTableau<T>,
+    pub(crate) idx : usize
 }
 
 impl<T> ButcherTableau<T> {
     pub fn len(&self) -> usize {
         self.bj.len()
     }
+
+    pub fn into_iter(&self) -> TableauIterator<T>{
+        TableauIterator{
+            tableau : &self,
+            idx : 0,
+        }
+    }
 }
+
 
 impl<T> AbsDiffEq for ButcherTableau<T>
 where
@@ -55,6 +69,25 @@ where
         }
 
         return true;
+    }
+}
+
+impl<'a, T> Iterator for TableauIterator<'a, T>
+    where T : num_traits::One + Copy{
+    type Item = (T, &'a Vec<T>);
+
+    fn next(&mut self) -> Option<Self::Item>{
+        let length = self.tableau.len();
+        if self.idx < length{
+            let temp = self.idx;
+            self.idx += 1;
+            return Some((self.tableau.ci[temp], &self.tableau.aij[temp]));
+        } else if self.idx == length {
+            self.idx += 1;
+            return Some((<T as num_traits::One>::one(), &self.tableau.bj));
+        } else {
+            return None;
+        }
     }
 }
 
