@@ -13,8 +13,8 @@ pub struct ButcherTableau<T> {
 
 #[derive(PartialEq, PartialOrd, Clone, Debug)]
 pub struct TableauIterator<'a, T> {
-    pub(crate) tableau : &'a ButcherTableau<T>,
-    pub(crate) idx : usize
+    pub(crate) tableau: &'a ButcherTableau<T>,
+    pub(crate) idx: usize,
 }
 
 impl<T> ButcherTableau<T> {
@@ -22,14 +22,13 @@ impl<T> ButcherTableau<T> {
         self.bj.len()
     }
 
-    pub fn into_iter(&self) -> TableauIterator<T>{
-        TableauIterator{
-            tableau : &self,
-            idx : 0,
+    pub fn into_iter(&self) -> TableauIterator<T> {
+        TableauIterator {
+            tableau: &self,
+            idx: 0,
         }
     }
 }
-
 
 impl<T> AbsDiffEq for ButcherTableau<T>
 where
@@ -73,12 +72,14 @@ where
 }
 
 impl<'a, T> Iterator for TableauIterator<'a, T>
-    where T : num_traits::One + Copy{
+where
+    T: num_traits::One + Copy,
+{
     type Item = (T, &'a Vec<T>);
 
-    fn next(&mut self) -> Option<Self::Item>{
+    fn next(&mut self) -> Option<Self::Item> {
         let length = self.tableau.len();
-        if self.idx < length{
+        if self.idx < length {
             let temp = self.idx;
             self.idx += 1;
             return Some((self.tableau.ci[temp], &self.tableau.aij[temp]));
@@ -91,7 +92,7 @@ impl<'a, T> Iterator for TableauIterator<'a, T>
     }
 }
 
-pub trait ApproxMethod<T> : Debug {
+pub trait ApproxMethod<T>: Debug {
     fn tableau(&self) -> &ButcherTableau<T>;
 }
 
@@ -100,8 +101,10 @@ pub struct NewtonEulerMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonEulerMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonEulerMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -143,8 +146,10 @@ pub struct NewtonMidPointMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonMidPointMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonMidPointMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -186,8 +191,10 @@ pub struct NewtonSSPRK3Method<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonSSPRK3Method<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonSSPRK3Method<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -230,8 +237,10 @@ pub struct NewtonClassicMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonClassicMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonClassicMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -279,8 +288,10 @@ pub struct NewtonHeunMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonHeunMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonHeunMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -340,8 +351,10 @@ pub struct NewtonRalstonMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonRalstonMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonRalstonMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -403,8 +416,10 @@ pub struct NewtonGenericRungeKuttaMethod<T> {
     tableau: ButcherTableau<T>,
 }
 
-impl<T> ApproxMethod<T> for NewtonGenericRungeKuttaMethod<T> 
-    where T : Debug{
+impl<T> ApproxMethod<T> for NewtonGenericRungeKuttaMethod<T>
+where
+    T: Debug,
+{
     fn tableau(&self) -> &ButcherTableau<T> {
         &self.tableau
     }
@@ -678,5 +693,38 @@ mod test {
             )
             .get_matches_from(vec!["test", "--order", "3", "--alpha", "1.0"]);
         let _runge_kutta = NewtonGenericRungeKuttaMethod::<f32>::from(&c);
+    }
+
+    #[test]
+    fn test_tableau_iterator() {
+        fn check(input: Option<(f64, &Vec<f64>)>, test: Option<(f64, [f64; 4])>) {
+            match (input, test) {
+                (None, None) => {}
+                (None, Some(_)) | (Some(_), None) => {
+                    panic!("Test failed.");
+                }
+                (Some((ci, ai)), Some((tci, tai))) => {
+                    assert_abs_diff_eq!(ci, tci, epsilon = 1e-3);
+                    if ai.len() != 4 {
+                        panic!("Test failed");
+                    }
+                    for (aij, taij) in ai.iter().zip(tai) {
+                        assert_abs_diff_eq!(*aij, taij, epsilon = 1e-3);
+                    }
+                }
+            }
+        }
+
+        let tableau = NewtonClassicMethod::<f64>::new().tableau.clone();
+        let mut iter = tableau.into_iter();
+        check(iter.next(), Some((0.0, [0.0; 4])));
+        check(iter.next(), Some((0.5, [0.5, 0.0, 0.0, 0.0])));
+        check(iter.next(), Some((0.5, [0.0, 0.5, 0.0, 0.0])));
+        check(iter.next(), Some((1.0, [0.0, 0.0, 1.0, 0.0])));
+        check(
+            iter.next(),
+            Some((1.0, [0.166666, 0.33333, 0.33333, 0.16666])),
+        );
+        check(iter.next(), None);
     }
 }
