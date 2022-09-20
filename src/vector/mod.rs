@@ -54,6 +54,7 @@ pub mod basic;
 pub mod curvilinear;
 pub mod product;
 pub mod vector_serde;
+pub mod pair;
 
 pub trait Vector {
     type Item: Scalar;
@@ -83,14 +84,6 @@ impl<T> Dim<2> for CartessianND<T> {}
 impl<T> Dim<3> for CartessianND<T> {}
 impl<T> Dim<4> for CartessianND<T> {}
 impl<T> Dim<5> for CartessianND<T> {}
-
-impl<V: Vector, W: Vector> Vector for (V, W) {
-    type Item = V::Item;
-
-    fn dim(&self) -> usize {
-        self.0.dim() + self.1.dim()
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 /// Structrure wrap an array as coordinate

@@ -271,36 +271,10 @@ mod test {
 
     #[test]
     fn test_constgravity() {
+        #[derive(State)]
         struct TestState {
             mass: f64,
             pos: Cartessian2D<f64>,
-        }
-
-        impl Mass<f64> for TestState {
-            fn mass(&self) -> f64 {
-                self.mass
-            }
-        }
-
-        impl State for TestState {
-            type Movement = Cartessian2D<f64>;
-            type Position = Cartessian2D<f64>;
-
-            fn pos(&self) -> &Self::Position {
-                &self.pos
-            }
-
-            fn pos_mut(&mut self) -> &mut Self::Position {
-                &mut self.pos
-            }
-
-            fn disp<'a>(&self, movement: &'a Self::Movement) -> &'a Self::Position {
-                movement
-            }
-
-            fn renew_state(&mut self, movement: &Self::Movement) {
-                self.pos.zip_mut_with(movement, |p, m| *p = *p + *m);
-            }
         }
 
         let gravity = ConstGravity::new(Cartessian2D::new([0f64, -10f64]));
@@ -329,50 +303,13 @@ mod test {
 
     #[test]
     fn test_lorentz() {
+        #[derive(State)]
         struct TestState {
             #[allow(dead_code)]
             mass: f64,
             charge: f64,
             pos: Cartessian3D<f64>,
             vel: Cartessian3D<f64>,
-        }
-
-        impl Charge<f64> for TestState {
-            fn charge(&self) -> f64 {
-                self.charge
-            }
-        }
-
-        impl State for TestState {
-            type Movement = (Cartessian3D<f64>, Cartessian3D<f64>);
-            type Position = Cartessian3D<f64>;
-
-            fn pos(&self) -> &Self::Position {
-                &self.pos
-            }
-
-            fn pos_mut(&mut self) -> &mut Self::Position {
-                &mut self.pos
-            }
-
-            fn disp<'a>(&self, movement: &'a Self::Movement) -> &'a Self::Position {
-                &movement.0
-            }
-
-            fn renew_state(&mut self, movement: &Self::Movement) {
-                self.pos.zip_mut_with(&movement.0, |p, m| *p = *p + *m);
-                self.vel.zip_mut_with(&movement.1, |v, m| *v = *v + *m);
-            }
-        }
-
-        impl HasVelocity for TestState {
-            fn vel(&self) -> &<Self as State>::Position {
-                &self.vel
-            }
-
-            fn vel_mut(&mut self) -> &mut <Self as State>::Position {
-                &mut self.vel
-            }
         }
 
         let lorentz = Lorentz::new(Cartessian3D::new([0f64, 0f64, 10f64]));
