@@ -17,6 +17,8 @@ pub trait State {
     fn disp<'a>(&self, movement: &'a Self::Movement) -> &'a Self::Position;
 
     fn renew_state(&mut self, movement: &Self::Movement);
+
+    fn renew_with_constant(&mut self, movement : &Self::Movement, c : <Self::Position as Vector>::Item);
 }
 
 pub trait HasVelocity: State {
@@ -67,12 +69,12 @@ where
 
 #[cfg(test)]
 mod test {
-    // use approx::assert_abs_diff_eq;
-
     use super::*;
     use crate::prelude::State;
     use crate::vector::product::Norm;
+    use crate::vector::basic::Map;
     use crate::vector::Cartessian2D;
+    use approx::assert_abs_diff_eq;
 
     #[test]
     fn test_derive_macro() {
@@ -89,8 +91,8 @@ mod test {
             charge: 0f64,
             pos: Cartessian2D::new([0f64, 0f64]),
         };
-        assert!(test.mass() < 1e-30);
-        assert!(test.charge() < 1e-30);
+        assert_abs_diff_eq!(test.mass(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.charge(), 0f64, epsilon = 1e-30);
 
         #[derive(State)]
         struct TestState2 {
@@ -103,12 +105,12 @@ mod test {
             charge: 0f64,
             pos: Cartessian2D::new([0f64, 0f64]),
         };
-        assert!(test.mass() < 1e-30);
-        assert!(test.charge() < 1e-30);
-        assert!(test.pos().norm_l2() < 1e-30);
+        assert_abs_diff_eq!(test.mass(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.charge(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.pos().norm_l2(), 0f64, epsilon = 1e-30);
         let movement = Cartessian2D::new([1f64, 2f64]);
         test.renew_state(&movement);
-        assert!((test.pos().norm_l2() - 5f64.sqrt()).abs() < 1e-30);
+        assert_abs_diff_eq!(test.pos(), &movement, epsilon = 1e-30);
 
         #[derive(State)]
         struct TestState3 {
@@ -123,17 +125,21 @@ mod test {
             pos: Cartessian2D::new([0f64, 0f64]),
             vel: Cartessian2D::new([0f64, 0f64]),
         };
-        assert!(test.mass() < 1e-30);
-        assert!(test.charge() < 1e-30);
-        assert!(test.pos().norm_l2() < 1e-30);
-        assert!(test.vel().norm_l2() < 1e-30);
+        assert_abs_diff_eq!(test.mass(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.charge(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.pos().norm_l2(), 0f64, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.vel().norm_l2(), 0f64, epsilon = 1e-30);
         let movement = (
             Cartessian2D::new([1f64, 2f64]),
             Cartessian2D::new([0f64, 1f64]),
         );
         test.renew_state(&movement);
-        assert!((test.pos().norm_l2() - 5f64.sqrt()).abs() < 1e-30);
-        assert!((test.vel().norm_l2() - 1f64).abs() < 1e-30);
+        assert_abs_diff_eq!(test.pos(), &movement.0, epsilon = 1e-30);
+        assert_abs_diff_eq!(test.vel(), &movement.1, epsilon = 1e-30);
+
+        test.renew_with_constant(&movement, -2f64);
+        assert_abs_diff_eq!(test.pos(), &(-movement.0), epsilon = 1e-30);
+        assert_abs_diff_eq!(test.vel(), &(-movement.1), epsilon = 1e-30);
 
         // #[derive(State)]
         // struct TestState4 {

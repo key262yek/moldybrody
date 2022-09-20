@@ -119,6 +119,11 @@ pub fn derive_state(item : TokenStream) -> TokenStream{
                                 self.pos += &movement.0;
                                 self.vel += &movement.1;
                             }
+
+                            fn renew_with_constant(&mut self, movement : &Self::Movement, c : <Self::Position as Vector>::Item){
+                                self.pos.zip_mut_with(&movement.0, |p, m| *p += c * m);
+                                self.vel.zip_mut_with(&movement.1, |v, m| *v += c * m);
+                            }
                         }
 
                         impl #impl_generics HasVelocity for #struct_name #ty_generics #where_clause {
@@ -153,6 +158,10 @@ pub fn derive_state(item : TokenStream) -> TokenStream{
 
                             fn renew_state(&mut self, movement : &Self::Movement){
                                 self.pos += movement;
+                            }
+
+                            fn renew_with_constant(&mut self, movement : &Self::Movement, c : <Self::Position as Vector>::Item){
+                                self.pos.zip_mut_with(movement, |p, m| *p += c * m);
                             }
                         }
                     };
