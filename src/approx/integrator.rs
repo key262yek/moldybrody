@@ -402,7 +402,7 @@ where
 {
     tableau: ButcherTableau<<V as Vector>::Item>,
     time_iter: TimeDiffIterator<T>,
-    pub states: Vec<Arc<Mutex<S>>>,
+    pub states: Vec<S>,
     memory: Vec<Vec<(V, V)>>,
     temp_force: Vec<V>,
     temp_state: Vec<S>,
