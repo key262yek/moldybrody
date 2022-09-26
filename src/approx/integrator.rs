@@ -431,28 +431,26 @@ where
         });
     }
 
-    fn compute_temp_states(&self, i : usize, ci : <V as Vector>::Item, ai : &Vec<<V as Vector>::Item>){
+    fn compute_temp_states(&self, i : usize, h : <V as Vector>::Item, ci : <V as Vector>::Item, ai : &Vec<<V as Vector>::Item>){
         self.clone_states();
         self.memories.iter().take(i).zip(ai.iter().take(i)).for_each(|(memvec, aij)| {
             self.temp_states.iter().zip(memvec).for_each(|(t, m)| {
                 let mut temp = t.borrow_mut();
                 let memory = m.borrow();
                 
-                temp.renew_with_constant(&memory, *aij);
+                temp.renew_with_constant(&memory, *aij * h);
             })
         })
     }
 
-    fn compute_force<'b : 'a>(&'a self){
-        let forcefield = self.global_force;
-        
+    fn compute_force(&self){
         self.temp_states.iter().zip(self.temp_forces.iter()).for_each(|(s, f)| {
-            
             let state = s.borrow();
             let mut force = f.borrow_mut();
+            let forcefield = self.global_force.clone();
 
             let mass = state.mass();
-            self.global_force.force_to(&state, &mut force);
+            forcefield.force_to(&state, &mut force);
         });
     }
 }
@@ -470,7 +468,7 @@ where
             let num_state = self.states.len();
 
             for (i, (ci, ai)) in self.tableau.into_iter().enumerate(){
-                self.compute_temp_states(i, ci, ai);
+                self.compute_temp_states(i, h, ci, ai);
                 
                 // for k in 0..num_state{
                 //     let mass = self.temp_states[k].mass();
