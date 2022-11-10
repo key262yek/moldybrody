@@ -648,19 +648,17 @@ mod test {
     #[test]
     fn test_clone_states(){
         let integrator = declare_builder!();
-
         {
-            let mut state = integrator.states[0].lock().unwrap();
-            let temp_states = integrator.temp_states[0].lock().unwrap();
+            let mut state = integrator.states[0].borrow_mut();
+            let temp_states = integrator.temp_states[0].borrow();
             assert_abs_diff_eq!(state.pos(), temp_states.pos(), epsilon = 1e-3);
 
             state.pos[1] = -2.0;
         }
         integrator.clone_states();
         {
-            let mut state = integrator.states[0].lock().unwrap();
-            let temp_states = integrator.temp_states[0].lock().unwrap();
-            
+            let state = integrator.states[0].borrow_mut();
+            let temp_states = integrator.temp_states[0].borrow();   
             assert_abs_diff_eq!(state.pos(), temp_states.pos(), epsilon = 1e-3);
         }
     }
@@ -668,35 +666,32 @@ mod test {
     #[test]
     fn test_compute_temp_state(){
         let integrator = declare_builder!();
+        let h = 1.0;
         let ci = 1.0;
         let ai = vec![1.0, 2.0];
 
-        {
-            for i in 0..2{
-                let mut mem = integrator.memories[i][0].lock().unwrap();
-                mem.0[0] = (i + 1) as f64;
-            }
+        for i in 0..2{
+            let mut mem = integrator.memories[i][0].borrow_mut();
+            mem.0[0] = (i + 1) as f64;
         }
 
-        integrator.compute_temp_states(0, ci, &ai);
+        integrator.compute_temp_states(0, h, ci, &ai);
         {
-            let temp = integrator.temp_states[0].lock().unwrap();
+            let temp = integrator.temp_states[0].borrow();
             assert_abs_diff_eq!(temp.pos[0], 0.0, epsilon = 1e-3);
         }
 
-        integrator.compute_temp_states(1, ci, &ai);
+        integrator.compute_temp_states(1, h, ci, &ai);
         {
-            let temp = integrator.temp_states[0].lock().unwrap();
+            let temp = integrator.temp_states[0].borrow();
             assert_abs_diff_eq!(temp.pos[0], 1.0, epsilon = 1e-3);
         }
-
-        integrator.compute_temp_states(2, ci, &ai);
+    
+        integrator.compute_temp_states(2, h, ci, &ai);
         {
-            let temp = integrator.temp_states[0].lock().unwrap();
+            let temp = integrator.temp_states[0].borrow();
             assert_abs_diff_eq!(temp.pos[0], 5.0, epsilon = 1e-3);
         }
-
-        
     }
 
 
